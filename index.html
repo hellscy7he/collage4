@@ -1,0 +1,2540 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;700;900&family=Bebas+Neue&family=Press+Start+2P&family=Comfortaa:wght@400;700&family=Lobster&family=Caveat:wght@400;700&family=Russo+One&family=Montserrat:wght@400;700;900&family=Oswald:wght@400;700&family=Playfair+Display:wght@400;700;900&family=Marck+Script&family=Pacifico&family=Bad+Script&family=Neucha&family=Yeseva+One&family=Unbounded:wght@400;700;900&family=Manrope:wght@400;700;800&display=swap" rel="stylesheet">
+<meta charset="UTF-8">
+<title>Коллаж розыгрыша — v4</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; font-family: system-ui, sans-serif;
+    background: #1e1f24; color: #eee;
+    display: grid; grid-template-rows: auto 1fr;
+    height: 100vh; overflow: hidden;
+  }
+
+  /* ============ TOPBAR ============ */
+  #topbar {
+    display: flex; gap: 0; background: #16171b;
+    border-bottom: 1px solid #333; align-items: stretch;
+    height: 44px; flex: 0 0 auto;
+  }
+  #topbar .brand {
+    padding: 0 14px; display: flex; align-items: center;
+    font-size: 13px; font-weight: 700; color: #6d8cff;
+    border-right: 1px solid #333; white-space: nowrap;
+  }
+  #topbar button.section-btn {
+    background: transparent; border: none; color: #aaa;
+    padding: 0 16px; font-size: 13px; cursor: pointer;
+    border-bottom: 2px solid transparent; margin: 0; width: auto;
+    border-radius: 0;
+  }
+  #topbar button.section-btn:hover { background: #202127; color: #ddd; }
+  #topbar button.section-btn.active {
+    color: #fff; border-bottom-color: #3d6df0; background: #202127;
+  }
+  #topbar .spacer { flex: 1; }
+  #topbar .mem-indicator {
+    display: flex; align-items: center; padding: 0 12px;
+    font-size: 11px; color: #888; white-space: nowrap;
+  }
+  #topbar .mem-indicator.warn { color: #ffb347; }
+  #topbar .mem-indicator.danger { color: #ff5c5c; }
+
+  /* ============ LAYOUT ============ */
+  #workspace {
+    display: grid; grid-template-columns: 340px 1fr;
+    height: 100%; overflow: hidden;
+  }
+  aside {
+    padding: 10px; overflow-y: auto;
+    background: #23252b; border-right: 1px solid #333;
+  }
+  main {
+    display: flex; align-items: center; justify-content: center;
+    background: #15161a; padding: 20px; overflow: auto;
+    position: relative;
+  }
+  canvas { max-width: 100%; max-height: 100%; box-shadow: 0 0 30px #000; }
+
+  /* ============ СЕКЦИИ-РЕЖИМЫ ============ */
+  body[data-section="setup"] #workspace { grid-template-columns: 340px 1fr; }
+  body[data-section="fill"] #workspace { grid-template-columns: 300px 1fr; }
+  /* ПК: в режиме экспорта панель экспорта остаётся (300px), canvas — 1fr */
+  body[data-section="export"] #workspace { grid-template-columns: 300px 1fr; }
+  body[data-section="export"] main { padding: 8px; }
+
+  /* Секции details — по data-section-group */
+  details[data-section-group] { display: none; }
+  body[data-section="setup"] details[data-section-group="setup"],
+  body[data-section="fill"] details[data-section-group="fill"],
+  body[data-section="export"] details[data-section-group="export"] { display: block; }
+
+  /* Плавающая панель в экспорте */
+  #exportPanel { display: none; }
+  body[data-section="export"] #exportPanel {
+    display: flex;
+    position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+    gap: 8px; background: rgba(20,21,26,.92);
+    padding: 8px 10px; border-radius: 10px; border: 1px solid #333;
+    z-index: 20; flex-wrap: wrap; justify-content: center;
+    max-width: 96vw;
+  }
+  #exportPanel button { width: auto; margin: 0; padding: 8px 12px; font-size: 12px; }
+  #exportPanel .cb {
+    display: flex; align-items: center; gap: 6px; font-size: 12px;
+    color: #ccc; white-space: nowrap;
+  }
+
+  /* ============ ОБЩЕЕ UI ============ */
+  details {
+    background: #2a2c33; border-radius: 8px;
+    margin-bottom: 8px; padding: 8px 10px;
+  }
+  summary {
+    cursor: pointer; font-size: 13px; font-weight: 600;
+    user-select: none; list-style: none;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::before { content: '▸ '; }
+  details[open] summary::before { content: '▾ '; }
+  details > *:not(summary) { margin-top: 8px; }
+  label { font-size: 12px; color: #aaa; display: block; margin: 6px 0 2px; }
+  input[type=file], input[type=number], input[type=text], select, textarea {
+    width: 100%; padding: 5px 7px; background: #1b1c20;
+    border: 1px solid #3a3d45; color: #eee; border-radius: 5px;
+    font-size: 12px;
+  }
+  input[type=color] {
+    width: 100%; height: 28px; padding: 0; border: 1px solid #3a3d45;
+    background: #1b1c20; border-radius: 5px;
+  }
+  input[type=range] { width: 100%; }
+  button {
+    padding: 7px 10px; border-radius: 6px; border: none;
+    background: #3d6df0; color: white; cursor: pointer; font-size: 12px;
+    width: 100%; margin-top: 6px;
+  }
+  button:hover { background: #4d7cff; }
+  button.secondary { background: #444; }
+  button.secondary:hover { background: #555; }
+  .row { display: flex; gap: 6px; }
+  .row > * { flex: 1; }
+  .row label { margin-top: 0; }
+  .check { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #ccc; margin: 4px 0; }
+  .check input { width: auto; }
+  .hint { font-size: 11px; color: #777; line-height: 1.35; }
+  hr { border: none; border-top: 1px solid #3a3d45; margin: 6px 0; }
+
+    #thumbs, #coverThumbs {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px;
+    max-height: 45vh; overflow-y: auto;
+    /* ключевое: чтобы длинные имена и огромные картинки не растягивали ячейки */
+    grid-auto-rows: 1fr;
+  }
+  #thumbs > *, #coverThumbs > * {
+    min-width: 0;           /* фикс: grid-элемент не должен расширяться по контенту */
+    min-height: 0;
+  }
+  #thumbs img, #coverThumbs img {
+    width: 100%; height: 100%;   /* теперь высота = высоте ячейки */
+    aspect-ratio: 2/3; object-fit: cover;
+    border-radius: 4px; cursor: pointer; border: 2px solid transparent;
+    background: #1b1c20;
+    display: block;
+    /* ограничение на всякий случай */
+    max-width: 100%; max-height: 100%;
+  }
+  #thumbs img.selected { border-color: #3d6df0; }
+
+  /* обложки: квадратные */
+  #coverThumbs img.cover-item {
+    aspect-ratio: 1;
+  }
+  #coverThumbs img.cover-item.selected { border-color: #3d6df0; }
+
+  #coverThumbs .cover-wrap {
+    position: relative;
+    aspect-ratio: 1;
+    overflow: hidden;         /* ключевое: контент не вылезает за ячейку */
+    border-radius: 4px;
+    background: #1b1c20;
+  }
+  #coverThumbs .cover-wrap .badge {
+    position: absolute; top: 2px; left: 2px; background: rgba(0,0,0,.7);
+    font-size: 10px; padding: 1px 5px; border-radius: 4px; pointer-events: none;
+  }
+  #coverThumbs .cover-wrap .del {
+    position: absolute; top: 2px; right: 2px; background: rgba(180,40,40,.85);
+    color: #fff; border: none; width: 20px; height: 20px; border-radius: 50%;
+    font-size: 12px; cursor: pointer; padding: 0; margin: 0; line-height: 1;
+  }
+  #coverThumbs .cover-wrap .del:hover { background: #c33; }
+
+  .stage-presets { display: flex; flex-wrap: wrap; gap: 4px; }
+  .stage-presets button {
+    width: auto; padding: 4px 8px; font-size: 11px; margin: 0;
+    background: #444;
+  }
+  .stage-presets button:hover { background: #555; }
+
+  /* ============ МОБИЛЬНАЯ АДАПТАЦИЯ ============ */
+  @media (max-width: 900px) {
+    #workspace { grid-template-columns: 280px 1fr; }
+    body[data-section="fill"] #workspace { grid-template-columns: 260px 1fr; }
+    body[data-section="export"] #workspace { grid-template-columns: 260px 1fr; }
+  }
+
+  @media (max-width: 700px) {
+    #workspace { display: block; height: auto; overflow: visible; }
+    aside {
+      border-right: none; border-bottom: 1px solid #333;
+      max-height: 50vh; overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    main {
+      padding: 8px; min-height: 60vh; overflow: visible;
+      align-items: flex-start;
+    }
+    canvas { max-height: none; max-width: 100%; height: auto; touch-action: manipulation; }
+
+    button { padding: 10px 12px; font-size: 14px; }
+    label, summary { font-size: 13px; }
+    input[type=file], input[type=number], input[type=text], select {
+      padding: 8px 10px; font-size: 14px;
+    }
+    input[type=range] { height: 28px; }
+    input[type=color] { height: 36px; }
+    #thumbs { grid-template-columns: repeat(3, 1fr); max-height: 260px; }
+    #coverThumbs { grid-template-columns: repeat(4, 1fr); }
+
+    #topbar { height: auto; flex-wrap: wrap; }
+    #topbar .brand { padding: 8px 10px; font-size: 12px; }
+    #topbar button.section-btn { padding: 8px 12px; font-size: 12px; }
+    #topbar .mem-indicator { padding: 6px 10px; width: 100%; border-top: 1px solid #333; }
+
+    #exportPanel { position: static; transform: none; margin: 8px; max-width: none; }
+  }
+
+  @media (max-width: 400px) {
+    aside { padding: 8px; }
+    #thumbs { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  /* ============ МОБИЛЬНЫЙ РЕЖИМ (body.mobile) ============ */
+  .tabbar { display: none; }
+
+  body.mobile {
+    display: flex; flex-direction: column;
+    height: 100dvh; overflow: hidden;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+  body.mobile #topbar { order: 0; height: auto; flex-wrap: wrap; }
+  body.mobile #topbar .brand { padding: 12px 16px; font-size: 25px; }
+  body.mobile #topbar button.section-btn { display: none; }
+  body.mobile #topbar .mem-indicator { padding: 8px 16px; font-size: 25px; width: 100%; border-top: 1px solid #333; justify-content: center; }
+
+  body.mobile #workspace {
+    order: 1; display: flex; flex-direction: column;
+    flex: 1 1 auto; min-height: 0; height: auto;
+  }
+  body.mobile main {
+    order: 1; flex: 0 0 58vh; padding: 8px; min-height: 0;
+    overflow: hidden; display: flex; align-items: center; justify-content: center;
+    background: #15161a;
+  }
+  body.mobile canvas {
+    max-height: 100%; max-width: 100%; height: auto;
+    touch-action: manipulation;
+  }
+  body.mobile #exportPanel{
+    max-height: 100%; max-width: 100%; height: auto;
+    touch-action: manipulation;
+  }
+  body.mobile aside {
+    order: 3; display: flex; flex-direction: column;
+    border: none; background: transparent; padding: 0;
+    max-height: none; overflow: visible; flex: 1 1 auto; min-height: 0;
+  }
+  body.mobile .tab-content {
+    flex: 1 1 auto; overflow-y: auto; padding: 16px;
+    background: #23252b; -webkit-overflow-scrolling: touch; min-height: 0;
+  }
+  
+  body.mobile .tabbar {
+    display: flex; order: 4; overflow-x: auto;
+    background: #1b1c20; border-top: 1px solid #333;
+    flex: 0 0 auto; padding-bottom: env(safe-area-inset-bottom, 0);
+    -webkit-overflow-scrolling: touch;
+  }
+  body.mobile .tabbar::-webkit-scrollbar { display: none; }
+  body.mobile .tabbar button {
+    flex: 1 0 auto; min-width: 80px; width: 20%;
+    padding: 16px 12px; margin: 0; border-radius: 0;
+    background: transparent; color: #bbb; font-size: 25px;
+    white-space: nowrap; border-bottom: 3px solid transparent;
+  }
+  body.mobile .tabbar button.active {
+    color: #fff; border-bottom-color: #3d6df0;
+  }
+
+  body.mobile details[data-section-group] { display: none !important; }
+  body.mobile details[data-section-group].tab-visible { display: block !important; }
+  body.mobile details {
+    padding: 0; background: transparent; border: none; margin: 0;
+  }
+  body.mobile details > summary { display: none; }
+  body.mobile details > *:not(summary) { margin-top: 12px; }
+
+  /* Увеличенные контролы */
+  body.mobile label, body.mobile .hint { font-size: 25px; margin: 8px 0 4px; }
+  body.mobile .hint { line-height: 1.4; font-size: 23px; }
+  body.mobile input[type=file],
+  body.mobile input[type=number],
+  body.mobile input[type=text],
+  body.mobile select,
+  body.mobile textarea {
+    padding: 12px 14px; font-size: 28px; height: 55px; /* большие поля ввода */
+  }
+  body.mobile input[type=color] { height: 50px; }
+  body.mobile input[type=range] { height: 40px; }
+  body.mobile .check { font-size: 26px; padding: 8px 0; gap: 10px; }
+  body.mobile .check input[type=checkbox] { width: 24px; height: 24px; }
+
+  body.mobile button {
+    display: flex; padding: 14px 16px; font-size: 26px;
+    margin: 8px auto; width: 90%; justify-content: center;
+    border-radius: 8px;
+  }
+  body.mobile .stage-presets button { font-size: 24px; padding: 14px 18px; width: auto; margin: 4px; }
+  body.mobile .row { flex-direction: column; gap: 8px; }
+  body.mobile .row > * { width: 100%; }
+
+  /* Увеличенные галереи */
+  body.mobile #thumbs { grid-template-columns: repeat(3, 1fr); gap: 8px; max-height: 50vh; }
+  body.mobile #coverThumbs { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  body.mobile #coverThumbs .cover-wrap .del { width: 28px; height: 28px; font-size: 26px; }
+  
+  body.mobile[data-section="export"] .tabbar { display: none; }
+  body.mobile[data-section="export"] aside { display: none; }
+  body.mobile[data-section="export"] main { flex: 1 1 auto; height: 100%; }
+  body.mobile main,
+  body.mobile aside,
+  body.mobile .tab-content {
+    overflow-anchor: none;
+  }
+</style>
+</head>
+<body data-section="setup">
+<!-- ============ TOPBAR ============ -->
+<div id="topbar">
+  <div class="brand">Коллаж v4</div>
+  <button class="section-btn active" data-section-btn="setup">⚙ Настройка</button>
+  <button class="section-btn" data-section-btn="fill">🎴 Заполнение карт</button>
+  <button class="section-btn" data-section-btn="export">⬇ Экспорт</button>
+  <div class="spacer"></div>
+  <div class="mem-indicator" id="memIndicator">—</div>
+</div>
+
+<div id="workspace">
+<aside>
+  <div class="tab-content">
+
+  <!-- STAGE -->
+  <details data-tab="stage" data-section-group="setup" open>
+    <summary>Рабочий слой (stage)</summary>
+    <div class="check">
+      <input type="checkbox" id="stageAuto" checked>
+      <label for="stageAuto" style="margin:0;">Авто (по размеру фона)</label>
+    </div>
+    <div class="row">
+      <div><label>Ширина, px</label><input type="number" id="stageW" value="1200" min="100"></div>
+      <div><label>Высота, px</label><input type="number" id="stageH" value="1800" min="100"></div>
+    </div>
+    <label>Шаблоны размера</label>
+    <div class="stage-presets" id="stagePresets">
+      <button class="secondary" data-sw="1080" data-sh="1920">9:16 (1080×1920)</button>
+      <button class="secondary" data-sw="1080" data-sh="1350">4:5 (1080×1350)</button>
+      <button class="secondary" data-sw="1080" data-sh="1080">1:1 (1080×1080)</button>
+      <button class="secondary" data-sw="1200" data-sh="1800">2:3 (1200×1800)</button>
+      <button class="secondary" data-sw="1920" data-sh="1080">16:9 (1920×1080)</button>
+      <button class="secondary" data-sw="2160" data-sh="3840">9:16 HQ (2160×3840)</button>
+    </div>
+    <div class="hint">При выборе шаблона «Авто» снимается.</div>
+  </details>
+
+  <!-- ФОН -->
+  <details data-tab="bg" data-section-group="setup" open>
+    <summary>Фон</summary>
+    <label>Тип фона</label>
+    <select id="bgType">
+      <option value="image">Картинка</option>
+      <option value="color">Сплошной цвет</option>
+      <option value="gradient">Градиент</option>
+    </select>
+
+    <div id="bgImageBox">
+      <input type="file" id="bgInput" accept="image/*">
+      <label>Режим вписывания</label>
+      <select id="bgFit">
+        <option value="cover">Cover (заполнить)</option>
+        <option value="contain">Contain (вписать)</option>
+        <option value="fill">Fill (растянуть)</option>
+        <option value="repeat">Repeat (замостить)</option>
+        <option value="center">Center (по центру 1:1)</option>
+      </select>
+      <label>Масштаб: <span id="bgScaleVal">1.00</span></label>
+      <input type="range" id="bgScale" min="0.1" max="4" step="0.01" value="1">
+      <label>Сдвиг X</label>
+      <input type="range" id="bgX" min="-1" max="1" step="0.005" value="0">
+      <label>Сдвиг Y</label>
+      <input type="range" id="bgY" min="-1" max="1" step="0.005" value="0">
+      <div class="row">
+        <div class="check"><input type="checkbox" id="bgFlipX"><label for="bgFlipX" style="margin:0;">Отраз. X</label></div>
+        <div class="check"><input type="checkbox" id="bgFlipY"><label for="bgFlipY" style="margin:0;">Отраз. Y</label></div>
+      </div>
+    </div>
+
+    <div id="bgColorBox" style="display:none;">
+      <label>Цвет</label>
+      <input type="color" id="bgColor" value="#1a1a2e">
+    </div>
+
+    <div id="bgGradientBox" style="display:none;">
+      <div class="row">
+        <div><label>Цвет 1</label><input type="color" id="gradColor1" value="#1a1a2e"></div>
+        <div><label>Цвет 2</label><input type="color" id="gradColor2" value="#16213e"></div>
+      </div>
+      <label>Угол: <span id="gradAngleVal">135</span>°</label>
+      <input type="range" id="gradAngle" min="0" max="360" step="1" value="135">
+      <button class="secondary" id="btnRandomGradient">🎲 Случайный градиент</button>
+    </div>
+
+    <hr>
+    <label>Размытие фона: <span id="bgBlurVal">0</span> px</label>
+    <input type="range" id="bgBlur" min="0" max="40" step="1" value="0">
+    <label>Затемнение фона: <span id="bgDarkenVal">0</span>%</label>
+    <input type="range" id="bgDarken" min="0" max="100" step="1" value="0">
+
+    <hr>
+    <label>Виньетка: <span id="vignetteVal">0</span>%</label>
+    <input type="range" id="vignette" min="0" max="100" step="1" value="0">
+    <label>Размер виньетки: <span id="vignetteSizeVal">60</span>%</label>
+    <input type="range" id="vignetteSize" min="10" max="100" step="1" value="60">
+    <label>Цвет виньетки</label>
+    <input type="color" id="vignetteColor" value="#000000">
+
+    <button class="secondary reset-btn" data-reset="bg">↺ Сбросить</button>
+  </details>
+
+  <!-- СЛОТЫ -->
+  <details data-tab="slots" data-section-group="setup" open>
+    <summary>Расположение слотов</summary>
+    <label>Количество карт</label>
+    <input type="number" id="countInput" value="9" min="1" max="200">
+    <label>Режим раскладки</label>
+    <select id="layoutMode">
+      <option value="table">Таблица (плотно)</option>
+      <option value="spaced" selected>Равноудалённо (с зазорами)</option>
+    </select>
+    <label>Раскладка строк</label>
+    <select id="rowsPatternMode">
+      <option value="auto">Авто (по количеству карт)</option>
+      <option value="pattern">Паттерн строк (например, 2-3-2)</option>
+    </select>
+    <div id="patternBox" style="display:none;">
+      <label>Паттерн (числа через дефис)</label>
+      <input type="text" id="rowsPattern" value="3-3-3" placeholder="например 2-3-2">
+    </div>
+    <div class="row">
+      <div><label>Столбцы</label>
+        <select id="colsMode"><option value="auto">авто</option><option value="manual">вручную</option></select>
+      </div>
+      <div><label>&nbsp;</label><input type="number" id="colsValue" value="3" min="1" max="50" disabled></div>
+    </div>
+    <div class="row">
+      <div><label>Строки</label>
+        <select id="rowsMode"><option value="auto">авто</option><option value="manual">вручную</option></select>
+      </div>
+      <div><label>&nbsp;</label><input type="number" id="rowsValue" value="3" min="1" max="50" disabled></div>
+    </div>
+    <label>Отступ от края stage, %</label>
+    <input type="range" id="padPct" min="0" max="25" step="0.5" value="5">
+    <label>Зазор между слотами (для «равноудалённо»), %</label>
+    <input type="range" id="gapPct" min="0" max="15" step="0.5" value="3">
+    <button class="secondary reset-btn" data-reset="slots">↺ Сбросить</button>
+  </details>
+
+  <!-- РАМКА -->
+  <details data-tab="frame" data-section-group="setup">
+    <summary>Рамка и тень</summary>
+    <div class="check"><input type="checkbox" id="frameOn" checked><label for="frameOn" style="margin:0;">Включить рамку</label></div>
+    <label>Цвет рамки</label>
+    <input type="color" id="frameColor" value="#ffffff">
+    <label>Толщина, px</label>
+    <input type="number" id="frameWidth" value="2" min="0" max="40">
+    <label>Скругление, px</label>
+    <input type="number" id="frameRadius" value="6" min="0" max="200">
+    <hr>
+    <label>Тень</label>
+    <select id="frameShadow">
+      <option value="none">нет</option>
+      <option value="outer">внешняя</option>
+      <option value="inner">внутренняя</option>
+    </select>
+    <label>Цвет тени</label>
+    <input type="color" id="frameShadowColor" value="#000000">
+    <label>Прозрачность тени: <span id="frameShadowAlphaVal">0.85</span></label>
+    <input type="range" id="frameShadowAlpha" min="0" max="1" step="0.05" value="0.85">
+    <label>Размытие (blur), px</label>
+    <input type="range" id="frameShadowBlur" min="0" max="80" step="1" value="12">
+    <label>Сдвиг X, px</label>
+    <input type="range" id="frameShadowOffsetX" min="-40" max="40" step="1" value="0">
+    <label>Сдвиг Y, px</label>
+    <input type="range" id="frameShadowOffsetY" min="-40" max="40" step="1" value="0">
+    <label>Spread, px</label>
+    <input type="range" id="frameShadowSpread" min="-20" max="40" step="1" value="0">
+    <button class="secondary reset-btn" data-reset="frame">↺ Сбросить</button>
+  </details>
+
+  <!-- ОБЛОЖКА -->
+  <details data-tab="cover" data-section-group="setup">
+    <summary>Обложка закрытой карты</summary>
+    <label>Режим</label>
+    <select id="coverMode">
+      <option value="none">Нет (пусто)</option>
+      <option value="image">Свои картинки</option>
+      <option value="color">Сплошной цвет</option>
+    </select>
+
+    <div id="coverImageBox" style="display:none;">
+      <input type="file" id="coverInput" accept="image/*" multiple style="margin-top:6px;">
+      <label>Распределение по слотам</label>
+      <select id="coverOrder">
+        <option value="repeat">Повтор (1-2-3-1-2-3…)</option>
+        <option value="random">Случайно</option>
+        <option value="manual">Вручную (клик по обложке → клик по слоту)</option>
+      </select>
+      <button class="secondary" id="btnReshuffleCovers" style="margin-top:4px;">🎲 Перемешать случайно</button>
+      <div id="coverThumbs"></div>
+      <div class="hint">Загружено обложек: <span id="coverCount">0</span>. Клик по ✕ — удалить. В режиме «Вручную» выбери обложку кликом.</div>
+    </div>
+
+    <div id="coverColorBox" style="display:none;">
+      <label>Цвет обложки</label>
+      <input type="color" id="coverColor" value="#222222">
+    </div>
+
+    <label>Прозрачность обложки</label>
+    <input type="range" id="coverAlpha" min="0" max="1" step="0.05" value="1">
+  </details>
+
+  <!-- НОМЕРА -->
+  <details data-tab="num" data-section-group="setup">
+    <summary>Порядковый номер</summary>
+    <div class="check"><input type="checkbox" id="numOn" checked><label for="numOn" style="margin:0;">Показывать номера</label></div>
+    <label>Положение</label>
+    <select id="numPos">
+      <option value="tl">Сверху-слева</option>
+      <option value="tr">Сверху-справа</option>
+      <option value="bl">Снизу-слева</option>
+      <option value="br">Снизу-справа</option>
+      <option value="center" selected>Центр</option>
+    </select>
+    <label>Шрифт</label>
+    <select id="numFont">
+      <option value="'Rubik', system-ui, sans-serif">Rubik</option>
+      <option value="'Bebas Neue', sans-serif">Bebas Neue</option>
+      <option value="'Press Start 2P', monospace">Press Start 2P</option>
+      <option value="'Comfortaa', sans-serif">Comfortaa</option>
+      <option value="'Lobster', cursive">Lobster</option>
+      <option value="'Caveat', cursive">Caveat</option>
+      <option value="'Russo One', sans-serif">Russo One</option>
+      <option value="'Montserrat', sans-serif">Montserrat</option>
+      <option value="'Oswald', sans-serif">Oswald</option>
+      <option value="'Playfair Display', serif">Playfair Display</option>
+      <option value="'Marck Script', cursive">Marck Script</option>
+      <option value="'Pacifico', cursive">Pacifico</option>
+      <option value="'Bad Script', cursive">Bad Script</option>
+      <option value="'Neucha', cursive">Neucha</option>
+      <option value="'Yeseva One', serif">Yeseva One</option>
+      <option value="'Unbounded', sans-serif">Unbounded</option>
+      <option value="'Manrope', sans-serif">Manrope</option>
+      <option value="system-ui, sans-serif">System UI</option>
+      <option value="__custom__">— свой шрифт —</option>
+    </select>
+    <div id="customFontBox" style="display:none;">
+      <input type="file" id="customFontInput" accept=".ttf,.otf,.woff,.woff2">
+      <div class="hint" id="customFontName">Свой шрифт не загружен.</div>
+    </div>
+
+    <label>Размер шрифта, px</label>
+    <input type="range" id="numSize" min="8" max="400" step="1" value="60">
+    <label>Отступ X от края, % (можно выносить за слот)</label>
+    <input type="range" id="numPadX" min="-100" max="200" step="0.5" value="5">
+    <label>Отступ Y от края, % (можно выносить за слот)</label>
+    <input type="range" id="numPadY" min="-100" max="200" step="0.5" value="5">
+    <label>Цвет</label>
+    <input type="color" id="numColor" value="#ffffff">
+    <label>Прозрачность</label>
+    <input type="range" id="numAlpha" min="0" max="1" step="0.05" value="1">
+
+    <hr>
+    <div class="check"><input type="checkbox" id="numStroke" checked><label for="numStroke" style="margin:0;">Обводка</label></div>
+    <label>Цвет обводки</label>
+    <input type="color" id="numStrokeColor" value="#000000">
+    <label>Прозрачность обводки: <span id="numStrokeAlphaVal">0.85</span></label>
+    <input type="range" id="numStrokeAlpha" min="0" max="1" step="0.05" value="0.85">
+    <label>Толщина обводки (доля от шрифта): <span id="numStrokeWidthVal">0.12</span></label>
+    <input type="range" id="numStrokeWidth" min="0" max="0.5" step="0.01" value="0.12">
+
+    <hr>
+    <label>Фон под номером</label>
+    <select id="numBadgeShape">
+      <option value="none">нет</option>
+      <option value="circle">круг</option>
+      <option value="rect">прямоугольник</option>
+    </select>
+    <label>Цвет фона номера</label>
+    <input type="color" id="numBadgeColor" value="#000000">
+    <label>Прозрачность фона номера: <span id="numBadgeAlphaVal">0.6</span></label>
+    <input type="range" id="numBadgeAlpha" min="0" max="1" step="0.05" value="0.6">
+    <label>Масштаб фона номера: <span id="numBadgeScaleVal">1.15</span></label>
+    <input type="range" id="numBadgeScale" min="0.5" max="3" step="0.05" value="1.15">
+    <label>Размытие фона номера: <span id="numBadgeBlurVal">0</span> px</label>
+    <input type="range" id="numBadgeBlur" min="0" max="30" step="1" value="0">
+
+    <button class="secondary reset-btn" data-reset="num">↺ Сбросить</button>
+  </details>
+
+  <!-- ПРЕСЕТЫ -->
+  <details data-tab="presets" data-section-group="setup">
+    <summary>Пресеты</summary>
+    <input type="text" id="presetName" placeholder="Название пресета">
+    <button id="btnSavePreset">💾 Сохранить пресет</button>
+    <div id="presetList"></div>
+    <button id="btnExportPresets" class="secondary">⬇ Экспорт пресетов (JSON)</button>
+    <input type="file" id="presetImportInput" accept=".json" style="margin-top:6px;">
+  </details>
+
+  <!-- ЗАПОЛНЕНИЕ КАРТ -->
+  <details data-tab="cards" data-section-group="fill" open>
+    <summary>Карты</summary>
+    <input type="file" id="cardsInput" accept="image/*" multiple>
+    <div id="thumbs"></div>
+    <div class="hint">Клик по карте — выбрать, затем клик по слоту — положить. Клик по пустому слоту — очистить.</div>
+    <button id="btnAutoFill" class="secondary">🎲 Авто-раскладка (случайно)</button>
+    <button id="btnClearSlots" class="secondary">Очистить все слоты</button>
+        <div class="check" style="margin-top:8px;">
+      <input type="checkbox" id="hideCards">
+      <label for="hideCards" style="margin:0;">🙈 Скрыть карты (только для настройки слотов)</label>
+    </div>
+    <button id="btnRemoveAllCards" class="secondary">Удалить все загруженные карты</button>
+  </details>
+
+  <!-- ЭКСПОРТ -->
+  <details data-tab="export" data-section-group="export" open>
+    <summary>Экспорт</summary>
+    <button id="btnExportEmpty">⬇ Скачать ПУСТУЮ</button>
+    <button id="btnExportFull">⬇ Скачать ПОЛНУЮ</button>
+    <hr>
+    <div class="check">
+      <input type="checkbox" id="markingMode">
+      <label for="markingMode" style="margin:0;">Режим отметки карт</label>
+    </div>
+    <div class="hint">Включи, потом кликай по слотам на холсте — они отметятся в порядке кликов.</div>
+    <div id="markedList" class="hint"></div>
+    <button id="btnExportMarked">⬇ Скачать ОТМЕЧЕННЫЕ</button>
+    <button id="btnClearMarks" class="secondary">Сбросить отметки</button>
+
+    <hr>
+    <div class="check">
+      <input type="checkbox" id="exportWithOriginals">
+      <label for="exportWithOriginals" style="margin:0;">Скачивать оригиналы карт по номерам слотов</label>
+    </div>
+    <div class="hint">
+      При экспорте скачается коллаж + оригиналы карт, которых ещё не скачивали в этой сессии.
+      Имя: <code>slot_N_имя.png</code>.
+    </div>
+    <div id="exportedSlotsInfo" class="hint"></div>
+    <button id="btnResetExportedSlots" class="secondary">↺ Сбросить историю экспорта оригиналов</button>
+    <button id="btnExportOriginalsZip" class="secondary">🗜 Скачать оригиналы ZIP-ом</button>
+    <div class="check">
+      <input type="checkbox" id="dontAskFillCheck">
+      <label for="dontAskFillCheck" style="margin:0;">Не предупреждать о незаполненных слотах</label>
+    </div>
+
+    <hr>
+    <label>Имя ZIP-архива (без .zip)</label>
+    <input type="text" id="projectZipName" placeholder="например, my-collage">
+    <div class="hint">Если не указать — будет: «{кол-во слотов}_{имя фона}».</div>
+    <button id="btnExportProjectZip" class="secondary">💾 Скачать проект (ZIP)</button>
+    <label>Импорт проекта (ZIP)</label>
+    <input type="file" id="projectImportInput" accept=".zip,application/zip">
+    <div id="projectImportInfo" class="hint"></div>
+  </details>
+
+  </div>
+</aside>
+
+<main>
+  <canvas id="stage"></canvas>
+
+  <div id="exportPanel">
+    <button id="btnExportEmpty2" class="secondary">⬇ Пустая</button>
+    <button id="btnExportFull2">⬇ Полная</button>
+    <label class="cb"><input type="checkbox" id="markingMode2"> Отметка</label>
+    <button id="btnExportMarked2" class="secondary">⬇ Отмеченные</button>
+    <label class="cb"><input type="checkbox" id="exportWithOriginals2"> + оригиналы</label>
+    <button id="btnExitExport" class="secondary">✕ Выйти</button>
+  </div>
+</main>
+
+<nav class="tabbar" id="tabbar">
+  <button data-tab-btn="stage">Слой</button>
+  <button data-tab-btn="bg">Фон</button>
+  <button data-tab-btn="slots">Слоты</button>
+  <button data-tab-btn="frame">Рамка</button>
+  <button data-tab-btn="cover">Обложка</button>
+  <button data-tab-btn="num">Номера</button>
+  <button data-tab-btn="cards">Карты</button>
+  <button data-tab-btn="presets">Пресеты</button>
+  <button data-tab-btn="export">Экспорт</button>
+</nav>
+
+</div><!-- /workspace -->
+
+<script>
+/* ============================================================
+   СОСТОЯНИЕ
+============================================================ */
+const state = {
+  bgImage: null,
+  coverImages: [],           // { name, img }
+  cardImages: [],            // { name, img, thumb }
+  slots: [],
+  selectedCardIndex: null,
+  selectedCoverIndex: null,  // для ручного режима обложек
+  slotCoverMap: new Map(),   // slotIndex -> coverIndex (ручное)
+  coverRandomMap: new Map(), // slotIndex -> coverIndex (случайный режим, стабильно)
+  markedOrder: [],
+  exportedSlots: new Set(),
+  customFont: null,
+};
+
+const canvas = document.getElementById('stage');
+const ctx = canvas.getContext('2d');
+const CELL_RATIO = 288 / 432;
+
+const resizeCache = new Map();
+const shadowCanvas = document.createElement('canvas');
+const shadowCtx = shadowCanvas.getContext('2d');
+
+const $ = (id) => document.getElementById(id);
+function bind(id, ev, fn) { const el = $(id); if (el) el.addEventListener(ev, fn); }
+function debounce(fn, ms) {
+  let t = null;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+
+function toggleMark(slotIndex) {
+  const pos = state.markedOrder.indexOf(slotIndex);
+  if (pos === -1) state.markedOrder.push(slotIndex);
+  else state.markedOrder.splice(pos, 1);
+  updateMarkedList();
+  draw({ showCard: true });
+}
+
+function updateMarkedList() {
+  const wrap = $('markedList');
+  if (!wrap) return;
+  if (state.markedOrder.length === 0) { wrap.textContent = 'Ничего не отмечено.'; return; }
+  wrap.textContent = 'Отмечено: ' + state.markedOrder.map(i => i + 1).join(', ');
+}
+
+function updateExportedSlotsInfo() {
+  const wrap = $('exportedSlotsInfo');
+  if (!wrap) return;
+  if (state.exportedSlots.size === 0) { wrap.textContent = 'Оригиналы ещё не скачивались.'; return; }
+  wrap.textContent = 'Уже скачаны слоты: ' +
+    [...state.exportedSlots].sort((a,b)=>a-b).map(i => i + 1).join(', ');
+}
+
+/* ============================================================
+   ЗАГРУЗКА
+============================================================ */
+const THUMB_MAX = 400;
+const FULL_MAX = 1600;
+const MEMORY_LIMIT_MB = 200;
+
+function loadImage(file) {
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); res(img); };
+    img.onerror = (e) => { URL.revokeObjectURL(url); rej(e); };
+    img.src = url;
+  });
+}
+
+function makeResized(img, maxSide) {
+  const iw = img.naturalWidth || img.width;
+  const ih = img.naturalHeight || img.height;
+  const scale = Math.min(1, maxSide / Math.max(iw, ih));
+  const w = Math.max(1, Math.round(iw * scale));
+  const h = Math.max(1, Math.round(ih * scale));
+  if (scale === 1) return { img, w, h };
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const cc = c.getContext('2d');
+  cc.imageSmoothingEnabled = true;
+  cc.imageSmoothingQuality = 'high';
+  cc.drawImage(img, 0, 0, w, h);
+  return { img: c, w, h };
+}
+
+function getResized(cardIndex, targetW) {
+  const step = Math.max(64, Math.round(targetW / 4));
+  const bucketW = Math.max(64, Math.round(targetW / step) * step);
+  const key = `${cardIndex}@${bucketW}`;
+  if (resizeCache.has(key)) return resizeCache.get(key);
+  const c = state.cardImages[cardIndex];
+  if (!c) return null;
+  const ratio = (c.img.naturalHeight || c.img.height) / (c.img.naturalWidth || c.img.width);
+  const w = bucketW;
+  const h = Math.max(1, Math.round(w * ratio));
+  const cv = document.createElement('canvas');
+  cv.width = w; cv.height = h;
+  const cc = cv.getContext('2d');
+  cc.imageSmoothingEnabled = true;
+  cc.imageSmoothingQuality = 'high';
+  cc.drawImage(c.img, 0, 0, w, h);
+  resizeCache.set(key, cv);
+  if (resizeCache.size > 300) resizeCache.delete(resizeCache.keys().next().value);
+  return cv;
+}
+
+function estimateMemoryMB() {
+  let total = 0;
+  if (state.bgImage) total += (state.bgImage.naturalWidth || 0) * (state.bgImage.naturalHeight || 0) * 4;
+  state.coverImages.forEach(c => total += (c.img.naturalWidth || 0) * (c.img.naturalHeight || 0) * 4);
+  state.cardImages.forEach(c => {
+    total += (c.img.naturalWidth || 0) * (c.img.naturalHeight || 0) * 4;
+    if (c.thumb) total += (c.thumb.naturalWidth || c.thumb.width || 0) * (c.thumb.naturalHeight || c.thumb.height || 0) * 4;
+  });
+  return total / (1024 * 1024);
+}
+
+function updateMemoryIndicator() {
+  const el = $('memIndicator');
+  if (!el) return;
+  const mb = estimateMemoryMB();
+  el.textContent = `RAM: ~${mb.toFixed(0)} МБ`;
+  el.classList.remove('warn', 'danger');
+  if (mb > MEMORY_LIMIT_MB) el.classList.add('danger');
+  else if (mb > MEMORY_LIMIT_MB * 0.6) el.classList.add('warn');
+}
+
+/* ============================================================
+   PERSIST НАСТРОЕК
+============================================================ */
+const SETTINGS_KEY = 'collage_settings_v4';
+
+const PRESET_IDS = [
+  'stageAuto','stageW','stageH',
+  'bgType','bgFit','bgScale','bgX','bgY','bgFlipX','bgFlipY',
+  'bgColor','gradColor1','gradColor2','gradAngle',
+  'bgBlur','bgDarken',
+  'vignette','vignetteSize','vignetteColor',
+  'countInput','layoutMode','colsMode','colsValue','rowsMode','rowsValue',
+  'padPct','gapPct','rowsPatternMode','rowsPattern',
+  'frameOn','frameColor','frameWidth','frameRadius','frameShadow',
+  'frameShadowColor','frameShadowAlpha','frameShadowBlur',
+  'frameShadowOffsetX','frameShadowOffsetY','frameShadowSpread',
+  'coverMode','coverColor','coverAlpha','coverOrder',
+  'numOn','numPos','numFont','numSize','numPadX','numPadY',
+  'numColor','numAlpha','numStroke',
+  'numStrokeColor','numStrokeAlpha','numStrokeWidth',
+  'numBadgeShape','numBadgeColor','numBadgeAlpha','numBadgeScale','numBadgeBlur',
+  'exportWithOriginals','dontAskFillCheck',
+];
+
+function collectSettings() {
+  const out = {};
+  PRESET_IDS.forEach(id => {
+    const el = $(id);
+    if (!el) return;
+    if (el.type === 'checkbox') out[id] = el.checked;
+    else out[id] = el.value;
+  });
+  return out;
+}
+
+function applySettingsValues(s) {
+  PRESET_IDS.forEach(id => {
+    const el = $(id);
+    if (!el || !(id in s)) return;
+    if (el.type === 'checkbox') el.checked = !!s[id];
+    else el.value = s[id];
+  });
+  syncAllVisibility();
+  syncAllSliderLabels();
+}
+
+const persistSettings = debounce(() => {
+  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(collectSettings())); }
+  catch (e) { console.warn('Не удалось сохранить настройки:', e); }
+}, 300);
+
+function restoreSettings() {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (!raw) return false;
+    const s = JSON.parse(raw);
+    applySettingsValues(s);
+    return true;
+  } catch (e) { return false; }
+}
+
+function syncAllVisibility() {
+  const bt = $('bgType').value;
+  $('bgImageBox').style.display = bt === 'image' ? 'block' : 'none';
+  $('bgColorBox').style.display = bt === 'color' ? 'block' : 'none';
+  $('bgGradientBox').style.display = bt === 'gradient' ? 'block' : 'none';
+
+  const cm = $('coverMode').value;
+  $('coverImageBox').style.display = cm === 'image' ? 'block' : 'none';
+  $('coverColorBox').style.display = cm === 'color' ? 'block' : 'none';
+
+  $('customFontBox').style.display = $('numFont').value === '__custom__' ? 'block' : 'none';
+  $('colsValue').disabled = $('colsMode').value !== 'manual';
+  $('rowsValue').disabled = $('rowsMode').value !== 'manual';
+  $('patternBox').style.display = $('rowsPatternMode').value === 'pattern' ? 'block' : 'none';
+
+  if ($('markingMode') && $('markingMode2')) $('markingMode2').checked = $('markingMode').checked;
+  if ($('exportWithOriginals') && $('exportWithOriginals2')) $('exportWithOriginals2').checked = $('exportWithOriginals').checked;
+}
+
+function syncAllSliderLabels() {
+  $('bgScaleVal').textContent = (+$('bgScale').value).toFixed(2);
+  $('bgBlurVal').textContent = $('bgBlur').value;
+  $('bgDarkenVal').textContent = $('bgDarken').value;
+  $('gradAngleVal').textContent = $('gradAngle').value;
+  $('vignetteVal').textContent = $('vignette').value;
+  $('vignetteSizeVal').textContent = $('vignetteSize').value;
+  $('frameShadowAlphaVal').textContent = (+$('frameShadowAlpha').value).toFixed(2);
+  $('numStrokeAlphaVal').textContent = (+$('numStrokeAlpha').value).toFixed(2);
+  $('numStrokeWidthVal').textContent = (+$('numStrokeWidth').value).toFixed(2);
+  $('numBadgeAlphaVal').textContent = (+$('numBadgeAlpha').value).toFixed(2);
+  $('numBadgeScaleVal').textContent = (+$('numBadgeScale').value).toFixed(2);
+  $('numBadgeBlurVal').textContent = $('numBadgeBlur').value;
+}
+
+/* ============================================================
+   ЗАГРУЗКА ФАЙЛОВ
+============================================================ */
+bind('bgInput', 'change', async e => {
+  const f = e.target.files[0]; if (!f) return;
+  state.bgImage = await loadImage(f);
+  state.bgName = f.name;
+  if ($('stageAuto').checked) {
+    $('stageW').value = state.bgImage.naturalWidth;
+    $('stageH').value = state.bgImage.naturalHeight;
+  }
+  updateMemoryIndicator();
+  persistSettings();
+  rebuild();
+});
+
+bind('coverInput', 'change', async e => {
+  const files = [...e.target.files];
+  for (const f of files) state.coverImages.push({ name: f.name, img: await loadImage(f) });
+  // сброс ручных привязок при добавлении
+  state.slotCoverMap.clear();
+  state.coverRandomMap.clear();
+  renderCoverThumbs();
+  updateMemoryIndicator();
+  draw({ showCard: true });
+});
+
+bind('cardsInput', 'change', async e => {
+  const files = [...e.target.files];
+  for (const f of files) {
+    const img = await loadImage(f);
+    const iw = img.naturalWidth, ih = img.naturalHeight;
+    let fullImg = img;
+    if (Math.max(iw, ih) > FULL_MAX) {
+      fullImg = makeResized(img, FULL_MAX).img;
+    }
+    const t = makeResized(img, THUMB_MAX);
+    state.cardImages.push({ name: f.name, img: fullImg, thumb: t.img });
+  }
+  renderThumbs();
+  updateMemoryIndicator();
+  draw({ showCard: true });
+});
+
+bind('customFontInput', 'change', async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try {
+    const buf = await f.arrayBuffer();
+    const family = 'CustomFont_' + Date.now();
+    const fontFace = new FontFace(family, buf);
+    await fontFace.load();
+    document.fonts.add(fontFace);
+    state.customFont = { family, loaded: true };
+    const sel = $('numFont');
+    const old = sel.querySelector('option[data-custom="1"]');
+    if (old) old.remove();
+    const opt = document.createElement('option');
+    opt.value = `'${family}', sans-serif`;
+    opt.textContent = 'Свой: ' + f.name;
+    opt.dataset.custom = '1';
+    sel.insertBefore(opt, sel.querySelector('option[value="__custom__"]'));
+    sel.value = opt.value;
+    $('customFontName').textContent = 'Загружен: ' + f.name;
+    draw({ showCard: true });
+  } catch (err) {
+    alert('Не удалось загрузить шрифт.');
+  }
+});
+
+/* ============================================================
+   ГАЛЕРЕИ
+============================================================ */
+function renderThumbs() {
+  const wrap = $('thumbs'); wrap.innerHTML = '';
+  state.cardImages.forEach((c, i) => {
+    const im = document.createElement('img');
+    try { im.src = c.thumb ? c.thumb.toDataURL() : c.img.src; }
+    catch (e) { im.src = c.img.src || ''; }
+    im.title = c.name;
+    if (state.selectedCardIndex === i) im.classList.add('selected');
+    im.addEventListener('click', () => {
+      state.selectedCardIndex = (state.selectedCardIndex === i) ? null : i;
+      // при выборе карты снимаем выбор обложки
+      if (state.selectedCardIndex != null) state.selectedCoverIndex = null;
+      renderThumbs();
+      renderCoverThumbs();
+    });
+    wrap.appendChild(im);
+  });
+}
+
+function renderCoverThumbs() {
+  const wrap = $('coverThumbs');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  const isManual = $('coverOrder').value === 'manual';
+  state.coverImages.forEach((c, i) => {
+    const div = document.createElement('div');
+    div.className = 'cover-wrap';
+    const im = document.createElement('img');
+    im.className = 'cover-item';
+    im.src = c.img.src || '';
+    im.title = c.name;
+    if (state.selectedCoverIndex === i) im.classList.add('selected');
+    im.addEventListener('click', () => {
+      if (!isManual) return; // клик работает только в ручном режиме
+      state.selectedCoverIndex = (state.selectedCoverIndex === i) ? null : i;
+      if (state.selectedCoverIndex != null) state.selectedCardIndex = null;
+      renderThumbs();
+      renderCoverThumbs();
+    });
+    const badge = document.createElement('div');
+    badge.className = 'badge';
+    badge.textContent = '#' + (i + 1);
+    const del = document.createElement('button');
+    del.className = 'del';
+    del.textContent = '✕';
+    del.title = 'Удалить';
+    del.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      state.coverImages.splice(i, 1);
+      // чистка привязок
+      for (const [k,v] of [...state.slotCoverMap]) {
+        if (v === i) state.slotCoverMap.delete(k);
+        else if (v > i) state.slotCoverMap.set(k, v - 1);
+      }
+      state.coverRandomMap.clear();
+      renderCoverThumbs();
+      draw({ showCard: true });
+    });
+    div.appendChild(im);
+    div.appendChild(badge);
+    div.appendChild(del);
+    wrap.appendChild(div);
+  });
+  const cnt = $('coverCount');
+  if (cnt) cnt.textContent = state.coverImages.length;
+}
+
+/* ============================================================
+   STAGE
+============================================================ */
+function getStageSize() {
+  if ($('stageAuto').checked && state.bgImage) {
+    return { w: state.bgImage.naturalWidth, h: state.bgImage.naturalHeight };
+  }
+  return {
+    w: Math.max(100, +$('stageW').value || 1200),
+    h: Math.max(100, +$('stageH').value || 1800),
+  };
+}
+
+/* ============================================================
+   РАСКЛАДКА
+============================================================ */
+function computeLayout() {
+  const { w: SW, h: SH } = getStageSize();
+  const pad = (SW * (+$('padPct').value)) / 100;
+  const gapPct = +$('gapPct').value;
+  const mode = $('layoutMode').value;
+  const patternMode = $('rowsPatternMode').value;
+
+  let cols, rows, pattern = null;
+
+  if (patternMode === 'pattern') {
+    const raw = $('rowsPattern').value.trim();
+    pattern = raw.split(/[\s-]+/).map(s => parseInt(s, 10)).filter(n => n > 0);
+    if (pattern.length === 0) pattern = [3];
+    cols = Math.max(...pattern);
+    rows = pattern.length;
+  } else {
+    const count = Math.max(1, Math.min(200, +$('countInput').value || 1));
+    if ($('colsMode').value === 'manual' && $('rowsMode').value === 'manual') {
+      cols = Math.max(1, +$('colsValue').value);
+      rows = Math.max(1, +$('rowsValue').value);
+    } else if ($('colsMode').value === 'manual') {
+      cols = Math.max(1, +$('colsValue').value);
+      rows = Math.ceil(count / cols);
+    } else if ($('rowsMode').value === 'manual') {
+      rows = Math.max(1, +$('rowsValue').value);
+      cols = Math.ceil(count / rows);
+    } else {
+      const innerW = SW - pad * 2;
+      const innerH = SH - pad * 2;
+      let best = null;
+      for (let c = 1; c <= count; c++) {
+        const r = Math.ceil(count / c);
+        const cw = innerW / c, ch = innerH / r;
+        const diff = Math.abs(cw / ch - CELL_RATIO);
+        const area = cw * ch;
+        const score = diff * 10 - Math.log(area) * 0.05;
+        if (!best || score < best.score) best = { c, r, score };
+      }
+      cols = best.c; rows = best.r;
+    }
+  }
+
+  const innerW = SW - pad * 2;
+  const innerH = SH - pad * 2;
+
+  let cw, ch, offY;
+  let gapX = 0, gapY = 0;
+
+  if (mode === 'spaced') {
+    gapX = (innerW * gapPct) / 100 / cols;
+    gapY = (innerH * gapPct) / 100 / rows;
+    const freeW = innerW - gapX * (cols - 1);
+    const freeH = innerH - gapY * (rows - 1);
+    let cellW = freeW / cols;
+    let cellH = freeH / rows;
+    if (cellW / cellH > CELL_RATIO) cellW = cellH * CELL_RATIO;
+    else cellH = cellW / CELL_RATIO;
+    cw = cellW; ch = cellH;
+    const blockH = rows * ch + gapY * (rows - 1);
+    offY = (SH - blockH) / 2;
+  } else {
+    cw = innerW / cols;
+    ch = innerH / rows;
+    offY = pad;
+  }
+
+  const oldCardsByKey = new Map();
+  state.slots.forEach(s => {
+    if (s._rowKey != null) oldCardsByKey.set(s._rowKey, s.cardIndex);
+  });
+  state.slots = [];
+
+  for (let r = 0; r < rows; r++) {
+    const rowCount = pattern
+      ? pattern[r]
+      : Math.min(cols, Math.max(0, (+$('countInput').value || 1) - r * cols));
+    if (rowCount <= 0) continue;
+    const rowWidth = rowCount * cw + (rowCount - 1) * gapX;
+    const rowStartX = (SW - rowWidth) / 2;
+    for (let c = 0; c < rowCount; c++) {
+      const key = `${r}_${c}`;
+      state.slots.push({
+        x: rowStartX + c * (cw + gapX),
+        y: offY + r * (ch + gapY),
+        w: cw, h: ch,
+        cardIndex: oldCardsByKey.has(key) ? oldCardsByKey.get(key) : null,
+        _rowKey: key,
+      });
+    }
+  }
+}
+
+/* ============================================================
+   ФОН
+============================================================ */
+function drawBackground(SW, SH) {
+  const bgType = $('bgType').value;
+  if (bgType === 'color') {
+    ctx.fillStyle = $('bgColor').value;
+    ctx.fillRect(0, 0, SW, SH);
+  } else if (bgType === 'gradient') {
+    const c1 = $('gradColor1').value, c2 = $('gradColor2').value;
+    const angle = (+$('gradAngle').value) * Math.PI / 180;
+    const dx = Math.cos(angle), dy = Math.sin(angle);
+    const cx = SW / 2, cy = SH / 2;
+    const halfLen = Math.abs(SW * dx) / 2 + Math.abs(SH * dy) / 2;
+    const g = ctx.createLinearGradient(cx - dx * halfLen, cy - dy * halfLen,
+                                       cx + dx * halfLen, cy + dy * halfLen);
+    g.addColorStop(0, c1); g.addColorStop(1, c2);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, SW, SH);
+  } else if (bgType === 'image' && state.bgImage) {
+    const blur = +$('bgBlur').value;
+    ctx.save();
+    if (blur > 0) ctx.filter = `blur(${blur}px)`;
+    const iw = state.bgImage.naturalWidth, ih = state.bgImage.naturalHeight;
+    const scale = +$('bgScale').value;
+    const offX = (+$('bgX').value) * SW, offY = (+$('bgY').value) * SH;
+    const flipX = $('bgFlipX').checked ? -1 : 1;
+    const flipY = $('bgFlipY').checked ? -1 : 1;
+    const fit = $('bgFit').value;
+    ctx.translate(SW / 2 + offX, SH / 2 + offY);
+    ctx.scale(flipX * scale, flipY * scale);
+    if (fit === 'repeat') {
+      const pat = ctx.createPattern(state.bgImage, 'repeat');
+      ctx.fillStyle = pat; ctx.fillRect(-SW, -SH, SW * 2, SH * 2);
+    } else if (fit === 'center') {
+      ctx.drawImage(state.bgImage, -iw / 2, -ih / 2, iw, ih);
+    } else if (fit === 'fill') {
+      ctx.drawImage(state.bgImage, -SW / 2, -SH / 2, SW, SH);
+    } else {
+      const rStage = SW / SH, rImg = iw / ih;
+      let dw, dh;
+      if ((fit === 'cover' && rImg > rStage) || (fit === 'contain' && rImg < rStage)) { dw = SH * rImg; dh = SH; }
+      else { dw = SW; dh = SW / rImg; }
+      if (fit === 'cover') {
+        if (dw < SW) { dw = SW; dh = SW / rImg; }
+        if (dh < SH) { dh = SH; dw = SH * rImg; }
+      } else {
+        if (dw > SW) { dw = SW; dh = SW / rImg; }
+        if (dh > SH) { dh = SH; dw = SH * rImg; }
+      }
+      ctx.drawImage(state.bgImage, -dw / 2, -dh / 2, dw, dh);
+    }
+    ctx.restore();
+  } else {
+    ctx.fillStyle = '#0b0b10'; ctx.fillRect(0, 0, SW, SH);
+  }
+
+  const darken = +$('bgDarken').value;
+  if (darken > 0) {
+    ctx.save(); ctx.fillStyle = `rgba(0,0,0,${darken/100})`;
+    ctx.fillRect(0, 0, SW, SH); ctx.restore();
+  }
+
+  const vig = +$('vignette').value;
+  if (vig > 0) {
+    const sizePct = +$('vignetteSize').value;
+    const rgb = hexToRgb($('vignetteColor').value);
+    const cx = SW / 2, cy = SH / 2;
+    const innerR = Math.min(SW, SH) / 2 * (sizePct / 100);
+    const outerR = Math.hypot(SW / 2, SH / 2);
+    const g = ctx.createRadialGradient(cx, cy, innerR, cx, cy, outerR);
+    g.addColorStop(0, `rgba(${rgb.r},${rgb.g},${rgb.b},0)`);
+    g.addColorStop(1, `rgba(${rgb.r},${rgb.g},${rgb.b},${vig/100})`);
+    ctx.save(); ctx.fillStyle = g; ctx.fillRect(0, 0, SW, SH); ctx.restore();
+  }
+}
+
+function hexToRgba(hex, a) {
+  const h = hex.replace('#', '');
+  return `rgba(${parseInt(h.substring(0,2),16)},${parseInt(h.substring(2,4),16)},${parseInt(h.substring(4,6),16)},${a})`;
+}
+function hexToRgb(hex) {
+  const h = hex.replace('#', '');
+  return { r: parseInt(h.substring(0,2),16), g: parseInt(h.substring(2,4),16), b: parseInt(h.substring(4,6),16) };
+}
+
+/* ============================================================
+   СЛОТ
+============================================================ */
+function roundRectPath(c, x, y, w, h, r) {
+  r = Math.min(r, w / 2, h / 2);
+  c.beginPath();
+  c.moveTo(x + r, y);
+  c.arcTo(x + w, y, x + w, y + h, r);
+  c.arcTo(x + w, y + h, x, y + h, r);
+  c.arcTo(x, y + h, x, y, r);
+  c.arcTo(x, y, x + w, y, r);
+  c.closePath();
+}
+
+function drawSlot(slot, index, opts) {
+  const { showCard, forExport } = opts;
+  const radius = +$('frameRadius').value;
+  const frameOn = $('frameOn').checked;
+  const frameW = +$('frameWidth').value;
+  const frameColor = $('frameColor').value;
+  const shadow = $('frameShadow').value;
+  const shadowBlur = +$('frameShadowBlur').value;
+
+  if (shadow === 'outer' && shadowBlur > 0) drawOuterShadow(slot, radius);
+
+  ctx.save();
+  roundRectPath(ctx, slot.x, slot.y, slot.w, slot.h, radius);
+  ctx.clip();
+
+  const hideCards = $('hideCards').checked && !forExport;
+  const hasCard = showCard && !hideCards && slot.cardIndex != null && state.cardImages[slot.cardIndex];
+
+  if (hasCard) {
+    const targetW = Math.round(slot.w);
+    if (state.cardImages.length > 8 || targetW > 800) {
+      const resized = getResized(slot.cardIndex, targetW);
+      ctx.drawImage(resized || state.cardImages[slot.cardIndex].img, slot.x, slot.y, slot.w, slot.h);
+    } else {
+      ctx.drawImage(state.cardImages[slot.cardIndex].img, slot.x, slot.y, slot.w, slot.h);
+    }
+  } else {
+    drawCover(slot, index);
+  }
+  ctx.restore();
+
+  if (shadow === 'inner' && shadowBlur > 0 && !hasCard) drawInnerShadow(slot, radius, shadowBlur);
+
+  if (frameOn && frameW > 0) {
+    ctx.save();
+    roundRectPath(ctx, slot.x + frameW/2, slot.y + frameW/2, slot.w - frameW, slot.h - frameW, radius);
+    ctx.lineWidth = frameW; ctx.strokeStyle = frameColor; ctx.stroke();
+    ctx.restore();
+  }
+
+  drawNumber(slot, index);
+
+  if (!forExport && state.markedOrder.includes(index)) {
+    ctx.save();
+    roundRectPath(ctx, slot.x + 2, slot.y + 2, slot.w - 4, slot.h - 4, radius);
+    ctx.lineWidth = 4; ctx.strokeStyle = '#ffcc00'; ctx.stroke();
+    ctx.restore();
+  }
+}
+
+/* Обложка: manual > repeat > random > color */
+function drawCover(slot, index) {
+  const mode = $('coverMode').value;
+  if (mode === 'none') return;
+  const alpha = +$('coverAlpha').value;
+  ctx.globalAlpha = alpha;
+
+  if (mode === 'image' && state.coverImages.length > 0) {
+    const list = state.coverImages;
+    const order = $('coverOrder').value;
+    let pickIdx = -1;
+
+    if (order === 'manual') {
+      if (state.slotCoverMap.has(index)) pickIdx = state.slotCoverMap.get(index);
+    } else if (order === 'repeat') {
+      pickIdx = index % list.length;
+    } else if (order === 'random') {
+      if (!state.coverRandomMap.has(index)) {
+        state.coverRandomMap.set(index, Math.floor(Math.random() * list.length));
+      }
+      pickIdx = state.coverRandomMap.get(index);
+    }
+
+    if (pickIdx >= 0 && list[pickIdx]) {
+      const pick = list[pickIdx];
+      const iw = pick.img.naturalWidth, ih = pick.img.naturalHeight;
+      const rS = slot.w / slot.h, rI = iw / ih;
+      let dw, dh;
+      if (rI > rS) { dh = slot.h; dw = dh * rI; }
+      else { dw = slot.w; dh = dw / rI; }
+      ctx.drawImage(pick.img, slot.x + (slot.w-dw)/2, slot.y + (slot.h-dh)/2, dw, dh);
+    }
+  } else if (mode === 'color') {
+    ctx.fillStyle = $('coverColor').value;
+    ctx.fillRect(slot.x, slot.y, slot.w, slot.h);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawInnerShadow(slot, radius, size) {
+  const color = $('frameShadowColor').value;
+  const alpha = +$('frameShadowAlpha').value;
+  const rgb = hexToRgb(color);
+  const c0 = `rgba(${rgb.r},${rgb.g},${rgb.b},${alpha})`;
+  const c1 = `rgba(${rgb.r},${rgb.g},${rgb.b},0)`;
+  ctx.save();
+  roundRectPath(ctx, slot.x, slot.y, slot.w, slot.h, radius);
+  ctx.clip();
+  const s = Math.min(size, slot.w / 2, slot.h / 2);
+  let g = ctx.createLinearGradient(0, slot.y, 0, slot.y + s);
+  g.addColorStop(0, c0); g.addColorStop(1, c1); ctx.fillStyle = g; ctx.fillRect(slot.x, slot.y, slot.w, s);
+  g = ctx.createLinearGradient(0, slot.y + slot.h - s, 0, slot.y + slot.h);
+  g.addColorStop(0, c1); g.addColorStop(1, c0); ctx.fillStyle = g; ctx.fillRect(slot.x, slot.y + slot.h - s, slot.w, s);
+  g = ctx.createLinearGradient(slot.x, 0, slot.x + s, 0);
+  g.addColorStop(0, c0); g.addColorStop(1, c1); ctx.fillStyle = g; ctx.fillRect(slot.x, slot.y, s, slot.h);
+  g = ctx.createLinearGradient(slot.x + slot.w - s, 0, slot.x + slot.w, 0);
+  g.addColorStop(0, c1); g.addColorStop(1, c0); ctx.fillStyle = g; ctx.fillRect(slot.x + slot.w - s, slot.y, s, slot.h);
+  ctx.restore();
+}
+
+function drawOuterShadow(slot, radius) {
+  const color = $('frameShadowColor').value;
+  const alpha = +$('frameShadowAlpha').value;
+  const blur = +$('frameShadowBlur').value;
+  const offsetX = +$('frameShadowOffsetX').value;
+  const offsetY = +$('frameShadowOffsetY').value;
+  const spread = +$('frameShadowSpread').value;
+  const rgba = hexToRgba(color, alpha);
+  const pad = spread;
+  const sx = slot.x + offsetX - pad, sy = slot.y + offsetY - pad;
+  const sw = Math.max(1, slot.w + pad * 2), sh = Math.max(1, slot.h + pad * 2);
+  const sr = Math.max(0, radius + pad);
+  const margin = blur * 2 + Math.abs(offsetX) + Math.abs(offsetY) + Math.abs(pad) + 20;
+  shadowCanvas.width = canvas.width + margin * 2;
+  shadowCanvas.height = canvas.height + margin * 2;
+  shadowCtx.clearRect(0, 0, shadowCanvas.width, shadowCanvas.height);
+  shadowCtx.save();
+  shadowCtx.translate(margin, margin);
+  shadowCtx.fillStyle = rgba;
+  shadowCtx.shadowColor = rgba;
+  shadowCtx.shadowBlur = blur;
+  shadowCtx.shadowOffsetX = 0; shadowCtx.shadowOffsetY = 0;
+  roundRectPath(shadowCtx, sx, sy, sw, sh, sr);
+  shadowCtx.fill();
+  shadowCtx.restore();
+  shadowCtx.save();
+  shadowCtx.globalCompositeOperation = 'destination-out';
+  roundRectPath(shadowCtx, margin + slot.x, margin + slot.y, slot.w, slot.h, radius);
+  shadowCtx.fill();
+  shadowCtx.restore();
+  ctx.drawImage(shadowCanvas, -margin, -margin);
+}
+/* ============================================================
+   НОМЕР + БЕЙДЖ
+============================================================ */
+function drawNumber(slot, index) {
+  if (!$('numOn').checked) return;
+  const text = String(index + 1);
+  const fontSize = +$('numSize').value;
+  const font = $('numFont').value;
+  const color = $('numColor').value;
+  const alpha = +$('numAlpha').value;
+  const pos = $('numPos').value;
+
+  const padX = slot.w * (+$('numPadX').value) / 100;
+  const padY = slot.h * (+$('numPadY').value) / 100;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.font = `bold ${fontSize}px ${font}`;
+  ctx.textBaseline = 'top';
+  ctx.textAlign = 'left';
+
+  const m = ctx.measureText(text);
+  const tw = m.width;
+  const th = fontSize;
+
+  let cx, cy;
+  const leftX = slot.x + padX;
+  const rightX = slot.x + slot.w - padX - tw;
+  const topY = slot.y + padY;
+  const bottomY = slot.y + slot.h - padY - th;
+  const centerX = slot.x + (slot.w - tw) / 2;
+  const centerY = slot.y + (slot.h - th) / 2;
+
+  switch (pos) {
+    case 'tl': cx = leftX; cy = topY; break;
+    case 'tr': cx = rightX; cy = topY; break;
+    case 'bl': cx = leftX; cy = bottomY; break;
+    case 'br': cx = rightX; cy = bottomY; break;
+    default: cx = centerX; cy = centerY;
+  }
+
+  // ---- Фон под номером ----
+  const badgeShape = $('numBadgeShape').value;
+  if (badgeShape !== 'none') {
+    const badgeColor = $('numBadgeColor').value;
+    const badgeAlpha = +$('numBadgeAlpha').value;
+    const badgeScale = +$('numBadgeScale').value;
+    const badgeBlur = +$('numBadgeBlur').value;
+    const rgb = hexToRgb(badgeColor);
+    const fill = `rgba(${rgb.r},${rgb.g},${rgb.b},${badgeAlpha})`;
+
+    const centerOfTextX = cx + tw / 2;
+    const centerOfTextY = cy + th / 2;
+
+    let bw, bh;
+    if (badgeShape === 'circle') {
+      // круг: диаметр = max(tw, th) * scale
+      const d = Math.max(tw, th) * badgeScale;
+      bw = d; bh = d;
+    } else {
+      // прямоугольник: высота фикс. от шрифта, ширина расширяется
+      // но минимум 1.4 * высоты — чтобы «1» не была сплюснутой
+      bh = th * badgeScale;
+      const minW = th * 1.4 * badgeScale;
+      const wantedW = (tw + th * 0.4) * badgeScale;
+      bw = Math.max(minW, wantedW);
+    }
+
+    ctx.save();
+    if (badgeBlur > 0) {
+      ctx.shadowColor = fill;
+      ctx.shadowBlur = badgeBlur;
+    }
+    ctx.fillStyle = fill;
+
+    if (badgeShape === 'circle') {
+      const r = bw / 2;
+      ctx.beginPath();
+      ctx.arc(centerOfTextX, centerOfTextY, r, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      const rx = centerOfTextX - bw / 2;
+      const ry = centerOfTextY - bh / 2;
+      roundRectPath(ctx, rx, ry, bw, bh, Math.min(12, bh * 0.2));
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // ---- Обводка ----
+  if ($('numStroke').checked) {
+    const strokeColor = $('numStrokeColor').value;
+    const strokeAlpha = +$('numStrokeAlpha').value;
+    const strokeWidth = +$('numStrokeWidth').value;
+    if (strokeWidth > 0) {
+      ctx.lineWidth = Math.max(0.5, fontSize * strokeWidth);
+      ctx.strokeStyle = hexToRgba(strokeColor, strokeAlpha);
+      ctx.strokeText(text, cx, cy);
+    }
+  }
+
+  // ---- Текст ----
+  ctx.fillStyle = color;
+  ctx.fillText(text, cx, cy);
+  ctx.restore();
+}
+
+/* ============================================================
+   DEFAULTS
+============================================================ */
+const DEFAULTS = {
+  bg: {
+    bgType: 'image', bgFit: 'cover', bgScale: 1, bgX: 0, bgY: 0,
+    bgFlipX: false, bgFlipY: false,
+    bgColor: '#1a1a2e', gradColor1: '#1a1a2e', gradColor2: '#16213e', gradAngle: 135,
+    bgBlur: 0, bgDarken: 0,
+    vignette: 0, vignetteSize: 60, vignetteColor: '#000000',
+  },
+  slots: {
+    countInput: 9, layoutMode: 'spaced',
+    rowsPatternMode: 'auto', rowsPattern: '2-3-2',
+    colsMode: 'auto', colsValue: 3, rowsMode: 'auto', rowsValue: 3,
+    padPct: 5, gapPct: 3,
+  },
+  frame: {
+    frameOn: true, frameColor: '#ffffff', frameWidth: 2, frameRadius: 6,
+    frameShadow: 'none', frameShadowColor: '#000000', frameShadowAlpha: 0.85,
+    frameShadowBlur: 12, frameShadowOffsetX: 0, frameShadowOffsetY: 0, frameShadowSpread: 0,
+  },
+  num: {
+    numOn: true, numPos: 'center',
+    numFont: "'Rubik', system-ui, sans-serif",
+    numSize: 60, numPadX: 5, numPadY: 5,
+    numColor: '#ffffff', numAlpha: 1,
+    numStroke: true, numStrokeColor: '#000000', numStrokeAlpha: 0.85, numStrokeWidth: 0.12,
+    numBadgeShape: 'none', numBadgeColor: '#000000',
+    numBadgeAlpha: 0.6, numBadgeScale: 1.15, numBadgeBlur: 0,
+  },
+};
+
+function applyDefaults(group) {
+  const dict = DEFAULTS[group];
+  if (!dict) return;
+  Object.entries(dict).forEach(([id, val]) => {
+    const el = $(id);
+    if (!el) return;
+    if (el.type === 'checkbox') el.checked = !!val;
+    else el.value = val;
+  });
+  syncAllVisibility();
+  syncAllSliderLabels();
+  updateMarkedList();
+  persistSettings();
+  if (group === 'slots') rebuild(); else draw({ showCard: true });
+}
+
+document.querySelectorAll('[data-reset]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const group = btn.dataset.reset;
+    if (!confirm(`Сбросить настройки «${btn.parentElement.querySelector('summary')?.textContent || group}»?`)) return;
+    applyDefaults(group);
+  });
+});
+
+/* ============================================================
+   ОТРИСОВКА
+============================================================ */
+function draw(opts = {}) {
+  const showCard = opts.showCard !== false;
+  const forExport = opts.forExport === true;
+  const { w: SW, h: SH } = getStageSize();
+  canvas.width = SW; canvas.height = SH;
+  ctx.clearRect(0, 0, SW, SH);
+  drawBackground(SW, SH);
+  state.slots.forEach((slot, i) => drawSlot(slot, i, { showCard, forExport }));
+}
+
+function rebuild() {
+  computeLayout();
+  draw({ showCard: true });
+}
+
+/* ============================================================
+   ТРИГГЕРЫ ПЕРЕРИСОВКИ
+============================================================ */
+const LAYOUT_IDS = new Set([
+  'layoutMode','colsMode','colsValue','rowsMode','rowsValue',
+  'countInput','padPct','gapPct','stageAuto','stageW','stageH',
+  'rowsPatternMode','rowsPattern',
+]);
+
+const redrawTriggers = [
+  'bgType','bgFit','bgScale','bgX','bgY','bgFlipX','bgFlipY',
+  'bgColor','gradColor1','gradColor2','gradAngle','bgBlur','bgDarken',
+  'vignette','vignetteSize','vignetteColor',
+  'layoutMode','colsMode','colsValue','rowsMode','rowsValue',
+  'countInput','padPct','gapPct','rowsPatternMode','rowsPattern',
+  'frameOn','frameColor','frameWidth','frameRadius','frameShadow',
+  'frameShadowColor','frameShadowAlpha','frameShadowBlur',
+  'frameShadowOffsetX','frameShadowOffsetY','frameShadowSpread',
+  'coverMode','coverColor','coverAlpha','coverOrder',
+  'numOn','numPos','numFont','numSize','numPadX','numPadY',
+  'numColor','numAlpha','numStroke',
+  'numStrokeColor','numStrokeAlpha','numStrokeWidth',
+  'numBadgeShape','numBadgeColor','numBadgeAlpha','numBadgeScale','numBadgeBlur',
+  'stageAuto','stageW','stageH',
+];
+
+function redrawFor(id) {
+  if (LAYOUT_IDS.has(id)) rebuild(); else draw({ showCard: true });
+}
+
+redrawTriggers.forEach(id => {
+  const el = $(id);
+  if (!el) return;
+  const handler = () => {
+    redrawFor(id);
+    syncAllVisibility();
+    syncAllSliderLabels();
+    persistSettings();
+  };
+  el.addEventListener('input', handler);
+  el.addEventListener('change', handler);
+});
+
+bind('rowsPatternMode', 'change', () => {
+  $('patternBox').style.display = $('rowsPatternMode').value === 'pattern' ? 'block' : 'none';
+});
+
+bind('numFont', 'change', async () => {
+  const font = $('numFont').value;
+  if (font === '__custom__') return;
+  try { await document.fonts.load(`bold ${+$('numSize').value}px ${font}`); }
+  catch (e) { console.warn('Шрифт:', e); }
+  draw({ showCard: true });
+});
+
+bind('coverOrder', 'change', () => {
+  const order = $('coverOrder').value;
+  const list = state.coverImages;
+
+  // При входе в manual — «фиксируем» текущее распределение,
+  // чтобы пользователь мог менять только нужные слоты, а не начинать с нуля.
+  if (order === 'manual' && list.length > 0) {
+    // если в slotCoverMap уже что-то было — не трогаем;
+    // иначе заполняем по текущему виду (по repeat или по random-map)
+    if (state.slotCoverMap.size === 0) {
+      for (let i = 0; i < state.slots.length; i++) {
+        // что сейчас рисуется — то и фиксируем
+        if (state.slots[i].cardIndex == null) {
+          // у пустых слотов всё равно берём обложку по repeat/random,
+          // чтобы визуально ничего не прыгнуло
+        }
+        let idx;
+        if (state.coverRandomMap.has(i)) idx = state.coverRandomMap.get(i);
+        else idx = i % list.length;
+        state.slotCoverMap.set(i, idx);
+      }
+    }
+    // сбрасываем случайную карту, чтобы в manual она не мешала
+    state.coverRandomMap.clear();
+  }
+
+  state.selectedCoverIndex = null;
+  renderCoverThumbs();
+  draw({ showCard: true });
+});
+
+bind('btnReshuffleCovers', 'click', () => {
+  state.coverRandomMap.clear();
+  draw({ showCard: true });
+});
+
+/* ============================================================
+   СИНХРОНИЗАЦИЯ ЧЕКБОКСОВ
+============================================================ */
+bind('markingMode', 'change', () => {
+  if ($('markingMode2')) $('markingMode2').checked = $('markingMode').checked;
+  draw({ showCard: true });
+});
+bind('markingMode2', 'change', () => {
+  if ($('markingMode')) $('markingMode').checked = $('markingMode2').checked;
+  draw({ showCard: true });
+});
+bind('exportWithOriginals', 'change', () => {
+  if ($('exportWithOriginals2')) $('exportWithOriginals2').checked = $('exportWithOriginals').checked;
+  persistSettings();
+});
+bind('exportWithOriginals2', 'change', () => {
+  if ($('exportWithOriginals')) $('exportWithOriginals').checked = $('exportWithOriginals2').checked;
+  persistSettings();
+});
+
+/* ============================================================
+   АВТО-РАСКЛАДКА / ОЧИСТКА
+============================================================ */
+bind('btnAutoFill', 'click', () => {
+  if (state.cardImages.length === 0 || state.slots.length === 0) return;
+  const indices = state.cardImages.map((_, i) => i);
+  for (let i = indices.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [indices[i], indices[j]] = [indices[j], indices[i]];
+  }
+  const n = Math.min(state.slots.length, indices.length);
+  state.slots.forEach(s => s.cardIndex = null);
+  const slotOrder = state.slots.map((_, i) => i);
+  for (let i = slotOrder.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [slotOrder[i], slotOrder[j]] = [slotOrder[j], slotOrder[i]];
+  }
+  for (let k = 0; k < n; k++) state.slots[slotOrder[k]].cardIndex = indices[k];
+  draw({ showCard: true });
+});
+
+bind('btnClearSlots', 'click', () => {
+  state.slots.forEach(s => s.cardIndex = null);
+  state.exportedSlots.clear();
+  updateExportedSlotsInfo();
+  draw({ showCard: true });
+});
+
+bind('btnRemoveAllCards', 'click', () => {
+  if (state.cardImages.length === 0) return;
+  if (!confirm('Удалить все загруженные карты?')) return;
+  state.cardImages = [];
+  state.selectedCardIndex = null;
+  state.slots.forEach(s => s.cardIndex = null);
+  state.exportedSlots.clear();
+  resizeCache.clear();
+  renderThumbs();
+  updateExportedSlotsInfo();
+  updateMemoryIndicator();
+  draw({ showCard: true });
+});
+
+bind('hideCards', 'change', () => draw({ showCard: true }));
+
+/* ============================================================
+   КЛИК ПО ХОЛСТУ
+============================================================ */
+canvas.addEventListener('click', e => {
+  const rect = canvas.getBoundingClientRect();
+  const sx = (e.clientX - rect.left) * (canvas.width / rect.width);
+  const sy = (e.clientY - rect.top) * (canvas.height / rect.height);
+  const idx = state.slots.findIndex(s =>
+    sx >= s.x && sx <= s.x + s.w && sy >= s.y && sy <= s.y + s.h
+  );
+  if (idx === -1) return;
+
+  if ($('markingMode').checked) { toggleMark(idx); return; }
+
+  // Ручной режим обложек: если выбрана обложка — назначаем её слоту
+  if ($('coverMode').value === 'image' && $('coverOrder').value === 'manual' && state.selectedCoverIndex != null) {
+    state.slotCoverMap.set(idx, state.selectedCoverIndex);
+    draw({ showCard: true });
+    return;
+  }
+
+  // Карты
+  if (state.selectedCardIndex != null) {
+    state.slots[idx].cardIndex = state.selectedCardIndex;
+    state.selectedCardIndex = null;
+    renderThumbs();
+  } else if (state.slots[idx].cardIndex != null) {
+    state.slots[idx].cardIndex = null;
+  }
+  draw({ showCard: true });
+});
+
+/* ============================================================
+   СКАЧИВАНИЕ
+============================================================ */
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+function downloadCanvas(filename, after) {
+  return new Promise(resolve => {
+    canvas.toBlob(blob => {
+      downloadBlob(blob, filename);
+      if (after) after();
+      resolve();
+    }, 'image/png');
+  });
+}
+
+function originalFilename(slotIndex, cardName) {
+  const base = (cardName || 'image').replace(/\.[^.]+$/, '');
+  const safe = base.replace(/[\\/:*?"<>|]+/g, '_').slice(0, 60);
+  return `slot_${String(slotIndex + 1).padStart(2, '0')}_${safe}.png`;
+}
+
+async function exportOriginal(slotIndex) {
+  const slot = state.slots[slotIndex];
+  if (!slot || slot.cardIndex == null) return false;
+  const card = state.cardImages[slot.cardIndex];
+  if (!card) return false;
+  const img = card.img;
+  const iw = img.naturalWidth || img.width;
+  const ih = img.naturalHeight || img.height;
+  const c = document.createElement('canvas');
+  c.width = iw; c.height = ih;
+  c.getContext('2d').drawImage(img, 0, 0);
+  const blob = await new Promise(res => c.toBlob(res, 'image/png'));
+  if (!blob) return false;
+  downloadBlob(blob, originalFilename(slotIndex, card.name));
+  return true;
+}
+
+function checkFillWarning() {
+  if ($('dontAskFillCheck').checked) return true;
+  const empty = state.slots.filter(s => s.cardIndex == null).length;
+  if (empty === 0) return true;
+  return confirm(`Не заполнено слотов: ${empty}. Продолжить экспорт?`);
+}
+
+async function doExport({ showCard, filename, markedOnly, withOriginals }) {
+  if (!checkFillWarning()) return;
+  let backup = null;
+  if (markedOnly) {
+    if (state.markedOrder.length === 0) { alert('Ничего не отмечено.'); return; }
+    backup = state.slots.map(s => s.cardIndex);
+    state.slots.forEach((s, i) => { if (!state.markedOrder.includes(i)) s.cardIndex = null; });
+  }
+  draw({ showCard, forExport: true });
+  const nums = markedOnly ? state.markedOrder.map(i => i + 1).join('_') : '';
+  const finalName = markedOnly ? `collage-picked_${nums}.png` : filename;
+  await downloadCanvas(finalName, () => draw({ showCard: true }));
+  if (backup) {
+    state.slots.forEach((s, i) => s.cardIndex = backup[i]);
+    draw({ showCard: true });
+  }
+  if (withOriginals && showCard) {
+    const targetSlots = markedOnly ? state.markedOrder.slice() : state.slots.map((_, i) => i);
+    const toDownload = targetSlots.filter(i =>
+      state.slots[i] && state.slots[i].cardIndex != null && !state.exportedSlots.has(i)
+    );
+    for (const i of toDownload) {
+      const ok = await exportOriginal(i);
+      if (ok) { state.exportedSlots.add(i); updateExportedSlotsInfo(); }
+      await new Promise(r => setTimeout(r, 350));
+    }
+  }
+}
+
+bind('btnExportEmpty', 'click', () => doExport({ showCard: false, filename: 'collage-empty.png', markedOnly: false, withOriginals: false }));
+bind('btnExportFull', 'click', () => doExport({ showCard: true, filename: 'collage-full.png', markedOnly: false, withOriginals: $('exportWithOriginals').checked }));
+bind('btnExportMarked', 'click', () => doExport({ showCard: true, filename: 'collage-picked.png', markedOnly: true, withOriginals: $('exportWithOriginals').checked }));
+bind('btnExportEmpty2', 'click', () => doExport({ showCard: false, filename: 'collage-empty.png', markedOnly: false, withOriginals: false }));
+bind('btnExportFull2', 'click', () => doExport({ showCard: true, filename: 'collage-full.png', markedOnly: false, withOriginals: $('exportWithOriginals').checked }));
+bind('btnExportMarked2', 'click', () => doExport({ showCard: true, filename: 'collage-picked.png', markedOnly: true, withOriginals: $('exportWithOriginals').checked }));
+
+bind('btnResetExportedSlots', 'click', () => {
+  state.exportedSlots.clear();
+  updateExportedSlotsInfo();
+});
+
+/* ZIP */
+function crc32(buf) {
+  let c;
+  const table = crc32.table || (crc32.table = (() => {
+    const t = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      c = n;
+      for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      t[n] = c >>> 0;
+    }
+    return t;
+  })());
+  let crc = 0xFFFFFFFF;
+  for (let i = 0; i < buf.length; i++) crc = table[(crc ^ buf[i]) & 0xFF] ^ (crc >>> 8);
+  return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+
+async function cardToBlob(slotIndex) {
+  const slot = state.slots[slotIndex];
+  if (!slot || slot.cardIndex == null) return null;
+  const card = state.cardImages[slot.cardIndex];
+  if (!card) return null;
+  const img = card.img;
+  const iw = img.naturalWidth || img.width;
+  const ih = img.naturalHeight || img.height;
+  const c = document.createElement('canvas');
+  c.width = iw; c.height = ih;
+  c.getContext('2d').drawImage(img, 0, 0);
+  return await new Promise(res => c.toBlob(res, 'image/png'));
+}
+
+async function exportOriginalsZip() {
+  const slots = state.slots.map((_, i) => i).filter(i => state.slots[i].cardIndex != null);
+  if (slots.length === 0) { alert('Нет карт для экспорта.'); return; }
+  const files = [];
+  for (const i of slots) {
+    const blob = await cardToBlob(i);
+    if (!blob) continue;
+    const arr = new Uint8Array(await blob.arrayBuffer());
+    files.push({ name: originalFilename(i, state.cardImages[state.slots[i].cardIndex].name), data: arr });
+  }
+  if (files.length === 0) return;
+  const enc = new TextEncoder();
+  const parts = [], central = [];
+  let offset = 0;
+  const u16 = n => { const b = new Uint8Array(2); b[0]=n&255; b[1]=(n>>>8)&255; return b; };
+  const u32 = n => { const b = new Uint8Array(4); b[0]=n&255; b[1]=(n>>>8)&255; b[2]=(n>>>16)&255; b[3]=(n>>>24)&255; return b; };
+  for (const f of files) {
+    const nameBytes = enc.encode(f.name);
+    const crc = crc32(f.data);
+    const local = new Uint8Array(30 + nameBytes.length);
+    let p = 0;
+    local.set(u32(0x04034b50), p); p+=4; local.set(u16(20), p); p+=2;
+    local.set(u16(0), p); p+=2; local.set(u16(0), p); p+=2;
+    local.set(u16(0), p); p+=2; local.set(u16(0), p); p+=2;
+    local.set(u32(crc), p); p+=4; local.set(u32(f.data.length), p); p+=4;
+    local.set(u32(f.data.length), p); p+=4; local.set(u16(nameBytes.length), p); p+=2;
+    local.set(u16(0), p); p+=2; local.set(nameBytes, p);
+    parts.push(local, f.data);
+    const cen = new Uint8Array(46 + nameBytes.length);
+    p = 0;
+    cen.set(u32(0x02014b50), p); p+=4; cen.set(u16(20), p); p+=2;
+    cen.set(u16(20), p); p+=2; cen.set(u16(0), p); p+=2;
+    cen.set(u16(0), p); p+=2; cen.set(u16(0), p); p+=2;
+    cen.set(u16(0), p); p+=2; cen.set(u32(crc), p); p+=4;
+    cen.set(u32(f.data.length), p); p+=4; cen.set(u32(f.data.length), p); p+=4;
+    cen.set(u16(nameBytes.length), p); p+=2; cen.set(u16(0), p); p+=2;
+    cen.set(u16(0), p); p+=2; cen.set(u16(0), p); p+=2;
+    cen.set(u16(0), p); p+=2; cen.set(u32(0), p); p+=4;
+    cen.set(u32(offset), p); p+=4; cen.set(nameBytes, p);
+    central.push(cen);
+    offset += local.length + f.data.length;
+  }
+  const centralStart = offset;
+  let centralSize = 0;
+  central.forEach(c => { parts.push(c); centralSize += c.length; });
+  const end = new Uint8Array(22);
+  end.set(u32(0x06054b50), 0); end.set(u16(0), 4); end.set(u16(0), 6);
+  end.set(u16(files.length), 8); end.set(u16(files.length), 10);
+  end.set(u32(centralSize), 12); end.set(u32(centralStart), 16); end.set(u16(0), 20);
+  parts.push(end);
+  const blob = new Blob(parts, { type: 'application/zip' });
+  downloadBlob(blob, 'originals.zip');
+  slots.forEach(i => state.exportedSlots.add(i));
+  updateExportedSlotsInfo();
+}
+
+bind('btnExportOriginalsZip', 'click', exportOriginalsZip);
+bind('btnClearMarks', 'click', () => {
+  state.markedOrder = [];
+  updateMarkedList();
+  draw({ showCard: true });
+});
+
+/* ============================================================
+   ПРЕСЕТЫ
+============================================================ */
+const PRESET_KEY = 'collage_presets_v4';
+
+function loadPresets() {
+  try { return JSON.parse(localStorage.getItem(PRESET_KEY) || '[]'); }
+  catch { return []; }
+}
+function savePresets(list) { localStorage.setItem(PRESET_KEY, JSON.stringify(list)); }
+
+async function applySettings(s) {
+  applySettingsValues(s);
+  const font = $('numFont').value;
+  const size = +$('numSize').value;
+  if (font && font !== '__custom__') {
+    try { await document.fonts.load(`bold ${size}px ${font}`); }
+    catch (e) { console.warn('Шрифт:', e); }
+  }
+  syncAllVisibility();
+  syncAllSliderLabels();
+  persistSettings();
+  rebuild();
+}
+
+function renderPresetList() {
+  const wrap = $('presetList');
+  const list = loadPresets();
+  wrap.innerHTML = '';
+  if (list.length === 0) { wrap.innerHTML = '<div class="hint">Пока нет сохранённых пресетов.</div>'; return; }
+  list.forEach((p, i) => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:4px;margin-top:4px;align-items:center;';
+    const btn = document.createElement('button');
+    btn.textContent = p.name;
+    btn.style.cssText = 'flex:1;margin:0;';
+    btn.addEventListener('click', () => applySettings(p.settings));
+    const del = document.createElement('button');
+    del.textContent = '✕';
+    del.className = 'secondary';
+    del.style.cssText = 'width:28px;flex:none;margin:0;padding:6px 0;';
+    del.addEventListener('click', () => {
+      if (!confirm(`Удалить пресет "${p.name}"?`)) return;
+      const l = loadPresets();
+      l.splice(i, 1);
+      savePresets(l);
+      renderPresetList();
+    });
+    row.appendChild(btn); row.appendChild(del); wrap.appendChild(row);
+  });
+}
+
+bind('btnSavePreset', 'click', () => {
+  const name = ($('presetName').value || '').trim() || 'Без имени';
+  const list = loadPresets();
+  const idx = list.findIndex(p => p.name === name);
+  const entry = { name, settings: collectSettings() };
+  if (idx >= 0) list[idx] = entry; else list.push(entry);
+  savePresets(list);
+  renderPresetList();
+  $('presetName').value = '';
+});
+
+bind('btnExportPresets', 'click', () => {
+  const list = loadPresets();
+  const blob = new Blob([JSON.stringify(list, null, 2)], { type: 'application/json' });
+  downloadBlob(blob, 'collage-presets.json');
+});
+
+bind('presetImportInput', 'change', async e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  try {
+    const text = await f.text();
+    const imported = JSON.parse(text);
+    if (!Array.isArray(imported)) throw new Error('Не массив');
+    const list = loadPresets();
+    imported.forEach(p => {
+      if (!p || !p.name || !p.settings) return;
+      const idx = list.findIndex(x => x.name === p.name);
+      if (idx >= 0) list[idx] = p; else list.push(p);
+    });
+    savePresets(list);
+    renderPresetList();
+    alert(`Импортировано: ${imported.length} пресетов`);
+  } catch (err) {
+    alert('Не удалось импортировать: ' + err.message);
+  }
+});
+
+/* ============================================================
+   STAGE-ШАБЛОНЫ / ГРАДИЕНТ
+============================================================ */
+document.querySelectorAll('#stagePresets button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    $('stageAuto').checked = false;
+    $('stageW').value = btn.dataset.sw;
+    $('stageH').value = btn.dataset.sh;
+    persistSettings();
+    rebuild();
+  });
+});
+
+function randomHex() {
+  return '#' + Math.floor(Math.random() * 0xFFFFFF).toString(16).padStart(6, '0');
+}
+bind('btnRandomGradient', 'click', () => {
+  $('gradColor1').value = randomHex();
+  $('gradColor2').value = randomHex();
+  $('gradAngle').value = Math.floor(Math.random() * 360);
+  syncAllSliderLabels();
+  persistSettings();
+  draw({ showCard: true });
+});
+
+/* ============================================================
+   ГЛОБАЛЬНЫЕ РАЗДЕЛЫ
+============================================================ */
+let currentSection = 'setup';
+
+function switchSection(name) {
+  const changed = (currentSection !== name);
+  currentSection = name;
+  document.body.dataset.section = name;
+  document.querySelectorAll('[data-section-btn]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.sectionBtn === name);
+  });
+
+  if (document.body.classList.contains('mobile') && changed) {
+    // Только при реальной смене секции, и только если фокус не в инпуте
+    const ae = document.activeElement;
+    const inField = ae && (ae.tagName === 'INPUT' || ae.tagName === 'SELECT' ||
+                           ae.tagName === 'TEXTAREA' || ae.isContentEditable);
+    if (!inField) {
+      const firstVisible = document.querySelector(`details[data-section-group="${name}"]`);
+      if (firstVisible) switchTab(firstVisible.dataset.tab);
+    }
+  }
+  requestAnimationFrame(() => draw({ showCard: true }));
+}
+
+document.querySelectorAll('[data-section-btn]').forEach(btn => {
+  btn.addEventListener('click', () => switchSection(btn.dataset.sectionBtn));
+});
+bind('btnExitExport', 'click', () => switchSection('fill'));
+
+/* ============================================================
+   ВКЛАДКИ (мобила)
+============================================================ */
+let currentTab = 'stage';
+function switchTab(name) {
+  currentTab = name;
+  const isMobile = document.body.classList.contains('mobile');
+  document.querySelectorAll('details[data-tab]').forEach(el => {
+    const isActive = el.dataset.tab === name;
+    el.classList.toggle('tab-visible', isActive);
+    if (isMobile) {
+      const group = el.dataset.sectionGroup;
+      el.hidden = !(isActive && group === currentSection);
+    } else {
+      el.hidden = false;
+    }
+  });
+  document.querySelectorAll('[data-tab-btn]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tabBtn === name);
+  });
+}
+document.querySelectorAll('[data-tab-btn]').forEach(btn => {
+  btn.addEventListener('click', () => switchTab(btn.dataset.tabBtn));
+});
+
+/* ============================================================
+   МОБИЛА
+============================================================ */
+function detectMobile() {
+  const coarse = window.matchMedia('(pointer: coarse)').matches;
+  const noHover = window.matchMedia('(hover: none)').matches;
+  const narrow = window.matchMedia('(max-width: 1100px)').matches;
+  const uaMobile = navigator.userAgentData?.mobile;
+  if (typeof uaMobile === 'boolean') return uaMobile;
+  return (coarse || noHover) && narrow;
+}
+let lastMobileState = null;
+function applyMobileClass() {
+  const isMobile = detectMobile();
+  const changed = (lastMobileState !== isMobile);
+  lastMobileState = isMobile;
+  document.body.classList.toggle('mobile', isMobile);
+  if (isMobile) {
+    document.querySelectorAll('details[data-tab]').forEach(el => el.setAttribute('open', ''));
+  }
+  // если режим не менялся и не было явного resize секции — не трогаем вкладки
+  if (changed) switchSection(currentSection);
+}
+window.addEventListener('resize', debounce(applyMobileClass, 200));
+
+/* ============================================================
+   СОХРАНЕНИЕ ПЕРЕД ЗАКРЫТИЕМ
+============================================================ */
+function saveNow() {
+  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(collectSettings())); }
+  catch (e) { console.warn('saveNow:', e); }
+}
+window.addEventListener('pagehide', saveNow);
+window.addEventListener('beforeunload', saveNow);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') saveNow();
+});
+
+/* ============================================================
+   ПРОЕКТ: ЭКСПОРТ/ИМПОРТ ZIP
+============================================================ */
+
+/* --- Имя архива --- */
+function safeFilename(s) {
+  return String(s || '').replace(/[\\/:*?"<>|]+/g, '_').trim().slice(0, 80);
+}
+function bgBaseName() {
+  if (!state.bgImage) return 'bg';
+  // В state.bgImage нет имени — храним в state.bgName при загрузке.
+  return state.bgName ? safeFilename(state.bgName.replace(/\.[^.]+$/, '')) : 'bg';
+}
+function projectZipFilename() {
+  const custom = safeFilename($('projectZipName')?.value || '');
+  if (custom) return custom + '.zip';
+  const slots = state.slots.length || (+$('countInput').value || 0);
+  const name = bgBaseName();
+  return `${slots}_${name}.zip`;
+}
+
+/* --- Расширение и MIME по blob-у (для восстановления имени файла) --- */
+function extFromMime(mime, fallback = 'png') {
+  if (!mime) return fallback;
+  if (mime.includes('png')) return 'png';
+  if (mime.includes('jpeg') || mime.includes('jpg')) return 'jpg';
+  if (mime.includes('webp')) return 'webp';
+  if (mime.includes('gif')) return 'gif';
+  if (mime.includes('bmp')) return 'bmp';
+  if (mime.includes('svg')) return 'svg';
+  return fallback;
+}
+
+/* --- Конвертация Image/canvas в Blob PNG --- */
+function imageToBlob(img, preferredMime = 'image/png') {
+  const iw = img.naturalWidth || img.width;
+  const ih = img.naturalHeight || img.height;
+  const c = document.createElement('canvas');
+  c.width = iw; c.height = ih;
+  c.getContext('2d').drawImage(img, 0, 0);
+  return new Promise(res => c.toBlob(res, preferredMime, 0.95));
+}
+
+/* --- Сборка ZIP (stored) --- */
+function buildZip(files) {
+  // files: [{ name, data: Uint8Array }]
+  const enc = new TextEncoder();
+  const parts = [], central = [];
+  let offset = 0;
+  const u16 = n => { const b = new Uint8Array(2); b[0]=n&255; b[1]=(n>>>8)&255; return b; };
+  const u32 = n => { const b = new Uint8Array(4); b[0]=n&255; b[1]=(n>>>8)&255; b[2]=(n>>>16)&255; b[3]=(n>>>24)&255; return b; };
+  for (const f of files) {
+    const nameBytes = enc.encode(f.name);
+    const crc = crc32(f.data);
+    const local = new Uint8Array(30 + nameBytes.length);
+    let p = 0;
+    local.set(u32(0x04034b50), p); p+=4;
+    local.set(u16(20), p); p+=2;
+    local.set(u16(0x0800), p); p+=2;   // UTF-8 flag
+    local.set(u16(0), p); p+=2;
+    local.set(u16(0), p); p+=2;
+    local.set(u16(0), p); p+=2;
+    local.set(u32(crc), p); p+=4;
+    local.set(u32(f.data.length), p); p+=4;
+    local.set(u32(f.data.length), p); p+=4;
+    local.set(u16(nameBytes.length), p); p+=2;
+    local.set(u16(0), p); p+=2;
+    local.set(nameBytes, p);
+    parts.push(local, f.data);
+
+    const cen = new Uint8Array(46 + nameBytes.length);
+    p = 0;
+    cen.set(u32(0x02014b50), p); p+=4;
+    cen.set(u16(20), p); p+=2;
+    cen.set(u16(20), p); p+=2;
+    cen.set(u16(0x0800), p); p+=2;
+    cen.set(u16(0), p); p+=2;
+    cen.set(u16(0), p); p+=2;
+    cen.set(u16(0), p); p+=2;
+    cen.set(u32(crc), p); p+=4;
+    cen.set(u32(f.data.length), p); p+=4;
+    cen.set(u32(f.data.length), p); p+=4;
+    cen.set(u16(nameBytes.length), p); p+=2;
+    cen.set(u16(0), p); p+=2;
+    cen.set(u16(0), p); p+=2;
+    cen.set(u16(0), p); p+=2;
+    cen.set(u16(0), p); p+=2;
+    cen.set(u32(0), p); p+=4;
+    cen.set(u32(offset), p); p+=4;
+    cen.set(nameBytes, p);
+    central.push(cen);
+    offset += local.length + f.data.length;
+  }
+  const centralStart = offset;
+  let centralSize = 0;
+  central.forEach(c => { parts.push(c); centralSize += c.length; });
+  const end = new Uint8Array(22);
+  end.set(u32(0x06054b50), 0);
+  end.set(u16(0), 4); end.set(u16(0), 6);
+  end.set(u16(files.length), 8); end.set(u16(files.length), 10);
+  end.set(u32(centralSize), 12); end.set(u32(centralStart), 16);
+  end.set(u16(0), 20);
+  parts.push(end);
+  return new Blob(parts, { type: 'application/zip' });
+}
+
+/* --- Экспорт проекта --- */
+async function exportProjectZip() {
+  const files = [];
+  const meta = {
+    version: 1,
+    createdAt: new Date().toISOString(),
+    settings: collectSettings(),
+    bgName: state.bgName || null,
+    coverNames: state.coverImages.map(c => c.name),
+    cardNames: state.cardImages.map(c => c.name),
+    slots: state.slots.map((s, i) => ({
+      i, cardIndex: s.cardIndex,
+      _rowKey: s._rowKey,
+    })),
+    slotCoverMap: [...state.slotCoverMap.entries()],
+    coverRandomMap: [...state.coverRandomMap.entries()],
+    markedOrder: state.markedOrder.slice(),
+  };
+
+  // bg
+  if (state.bgImage) {
+    const blob = await imageToBlob(state.bgImage);
+    const data = new Uint8Array(await blob.arrayBuffer());
+    files.push({ name: 'bg.png', data });
+    meta.bgName = state.bgName || 'bg.png';
+  }
+
+  // covers
+  for (let i = 0; i < state.coverImages.length; i++) {
+    const c = state.coverImages[i];
+    const blob = await imageToBlob(c.img);
+    const data = new Uint8Array(await blob.arrayBuffer());
+    files.push({ name: `covers/${String(i).padStart(3, '0')}.png`, data });
+  }
+
+  // cards
+  for (let i = 0; i < state.cardImages.length; i++) {
+    const c = state.cardImages[i];
+    const blob = await imageToBlob(c.img);
+    const data = new Uint8Array(await blob.arrayBuffer());
+    files.push({ name: `cards/${String(i).padStart(3, '0')}.png`, data });
+  }
+
+  // settings.json
+  const enc = new TextEncoder();
+  files.push({ name: 'settings.json', data: enc.encode(JSON.stringify(meta, null, 2)) });
+
+  const zipBlob = buildZip(files);
+  downloadBlob(zipBlob, projectZipFilename());
+}
+
+/* --- Unzip (stored + deflate через DecompressionStream) --- */
+async function parseZip(arrayBuffer) {
+  const view = new DataView(arrayBuffer);
+  const bytes = new Uint8Array(arrayBuffer);
+  const files = [];
+  let eocd = -1;
+  for (let i = bytes.length - 22; i >= Math.max(0, bytes.length - 66000); i--) {
+    if (view.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  }
+  if (eocd === -1) throw new Error('ZIP: не найден EOCD.');
+  const total = view.getUint16(eocd + 10, true);
+  const cdOffset = view.getUint32(eocd + 16, true);
+  let p = cdOffset;
+  const hasDecompression = typeof DecompressionStream !== 'undefined';
+  for (let n = 0; n < total; n++) {
+    if (view.getUint32(p, true) !== 0x02014b50) throw new Error('ZIP: битый CD.');
+    const method = view.getUint16(p + 10, true);
+    const compSize = view.getUint32(p + 20, true);
+    const uncompSize = view.getUint32(p + 24, true);
+    const nameLen = view.getUint16(p + 28, true);
+    const extraLen = view.getUint16(p + 30, true);
+    const commentLen = view.getUint16(p + 32, true);
+    const localOffset = view.getUint32(p + 42, true);
+    const nameBytes = bytes.slice(p + 46, p + 46 + nameLen);
+    const name = new TextDecoder('utf-8').decode(nameBytes);
+
+    // local header
+    if (view.getUint32(localOffset, true) !== 0x04034b50) throw new Error('ZIP: битый local.');
+    const lnameLen = view.getUint16(localOffset + 26, true);
+    const lextraLen = view.getUint16(localOffset + 28, true);
+    const dataStart = localOffset + 30 + lnameLen + lextraLen;
+    const dataEnd = dataStart + compSize;
+    let data = bytes.slice(dataStart, dataEnd);
+
+    if (method === 8) {
+      if (!hasDecompression) throw new Error('ZIP: deflate не поддерживается этим браузером.');
+      const ds = new DecompressionStream('deflate-raw');
+      const stream = new Blob([data]).stream().pipeThrough(ds);
+      data = new Uint8Array(await new Response(stream).arrayBuffer());
+    } else if (method !== 0) {
+      throw new Error('ZIP: неподдерживаемый метод ' + method);
+    }
+    files.push({ name, data, uncompSize });
+    p += 46 + nameLen + extraLen + commentLen;
+  }
+  return files;
+}
+
+/* --- Импорт проекта --- */
+async function importProjectZip(file) {
+  const info = $('projectImportInfo');
+  if (info) info.textContent = 'Читаю архив…';
+  try {
+    const buf = await file.arrayBuffer();
+    const files = await parseZip(buf);
+    const map = new Map(files.map(f => [f.name, f]));
+
+    // settings.json
+    const metaFile = map.get('settings.json');
+    if (!metaFile) throw new Error('Нет settings.json в архиве.');
+    const meta = JSON.parse(new TextDecoder('utf-8').decode(metaFile.data));
+
+    // Применяем настройки
+    if (meta.settings) applySettingsValues(meta.settings);
+
+    // Сбрасываем всё старое
+    state.bgImage = null; state.bgName = null;
+    state.coverImages = [];
+    state.cardImages = [];
+    state.slotCoverMap.clear();
+    state.coverRandomMap.clear();
+    state.markedOrder = [];
+    state.exportedSlots.clear();
+    resizeCache.clear();
+
+    // bg
+    const bgFile = map.get('bg.png');
+    if (bgFile) {
+      const blob = new Blob([bgFile.data], { type: 'image/png' });
+      state.bgImage = await blobToImage(blob);
+      state.bgName = meta.bgName || 'bg.png';
+    }
+
+    // covers
+    const coverFiles = files
+      .filter(f => f.name.startsWith('covers/'))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    for (const cf of coverFiles) {
+      const blob = new Blob([cf.data], { type: 'image/png' });
+      const img = await blobToImage(blob);
+      const idx = parseInt(cf.name.replace(/\D+/g, ''), 10);
+      const origName = (meta.coverNames && meta.coverNames[idx]) || cf.name.split('/').pop();
+      state.coverImages.push({ name: origName, img });
+    }
+
+    // cards
+    const cardFiles = files
+      .filter(f => f.name.startsWith('cards/'))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    for (const cf of cardFiles) {
+      const blob = new Blob([cf.data], { type: 'image/png' });
+      const img = await blobToImage(blob);
+      const idx = parseInt(cf.name.replace(/\D+/g, ''), 10);
+      const origName = (meta.cardNames && meta.cardNames[idx]) || cf.name.split('/').pop();
+      const t = makeResized(img, THUMB_MAX);
+      state.cardImages.push({ name: origName, img, thumb: t.img });
+    }
+
+    // slots / mapping
+    rebuild();
+    if (meta.slots) {
+      for (const s of meta.slots) {
+        if (state.slots[s.i]) {
+          state.slots[s.i].cardIndex = s.cardIndex;
+          state.slots[s.i]._rowKey = s._rowKey || state.slots[s.i]._rowKey;
+        }
+      }
+    }
+    if (meta.slotCoverMap) {
+      for (const [k, v] of meta.slotCoverMap) state.slotCoverMap.set(k, v);
+    }
+    if (meta.coverRandomMap) {
+      for (const [k, v] of meta.coverRandomMap) state.coverRandomMap.set(k, v);
+    }
+    if (meta.markedOrder) state.markedOrder = meta.markedOrder.slice();
+
+    // UI
+    renderThumbs();
+    renderCoverThumbs();
+    syncAllVisibility();
+    syncAllSliderLabels();
+    updateMarkedList();
+    updateExportedSlotsInfo();
+    updateMemoryIndicator();
+    persistSettings();
+    draw({ showCard: true });
+
+    if (info) info.textContent = 'Импорт завершён ✓';
+  } catch (err) {
+    console.error(err);
+    if (info) info.textContent = 'Ошибка импорта: ' + err.message;
+    alert('Не удалось импортировать проект: ' + err.message);
+  }
+}
+
+function blobToImage(blob) {
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => { res(img); /* не revoke — см. фикс с обложками */ };
+    img.onerror = (e) => { URL.revokeObjectURL(url); rej(e); };
+    img.src = url;
+  });
+}
+
+/* --- Обработчики --- */
+bind('btnExportProjectZip', 'click', () => {
+  exportProjectZip().catch(err => {
+    console.error(err);
+    alert('Ошибка экспорта: ' + err.message);
+  });
+});
+bind('projectImportInput', 'change', (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  importProjectZip(f);
+  e.target.value = '';
+});
+
+/* ============================================================
+   INIT
+============================================================ */
+function init() {
+  restoreSettings();
+  syncAllVisibility();
+  syncAllSliderLabels();
+  updateMarkedList();
+  updateExportedSlotsInfo();
+  updateMemoryIndicator();
+  renderPresetList();
+  renderCoverThumbs();
+  applyMobileClass();
+  switchSection('setup');
+  rebuild();
+  requestAnimationFrame(updateMemoryIndicator);
+}
+
+init();
+
+</script>
+</body>
+</html>
